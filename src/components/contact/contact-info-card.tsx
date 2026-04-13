@@ -1,9 +1,9 @@
-/** Contact Information card — Figma node 819:8013 */
+/** Contact Information card — Figma 819:8013 (desktop) + 819:9192 (mobile) */
 export function ContactInfoCard() {
   const items = [
     {
       icon: (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="lg:h-6 lg:w-6">
           <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#2A478D" />
           <circle cx="12" cy="9" r="2.5" fill="white" />
         </svg>
@@ -13,7 +13,7 @@ export function ContactInfoCard() {
     },
     {
       icon: (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="lg:h-6 lg:w-6">
           <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="#2A478D" />
         </svg>
       ),
@@ -22,16 +22,16 @@ export function ContactInfoCard() {
     },
     {
       icon: (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="lg:h-6 lg:w-6">
           <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" fill="#2A478D" />
         </svg>
       ),
       label: "Email",
-      content: "info@estateluxe.com",
+      content: "info@bocrealestate.com",
     },
     {
       icon: (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="lg:h-6 lg:w-6">
           <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" fill="#2A478D" />
           <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.534 5.858L0 24l6.323-1.517A11.942 11.942 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.68-.503-5.22-1.38l-.38-.22-3.75.9.93-3.64-.24-.38A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" fill="#2A478D" />
         </svg>
@@ -41,7 +41,7 @@ export function ContactInfoCard() {
     },
     {
       icon: (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="lg:h-6 lg:w-6">
           <circle cx="12" cy="12" r="10" stroke="#2A478D" strokeWidth="2" />
           <path d="M12 6v6l4 2" stroke="#2A478D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -58,22 +58,25 @@ export function ContactInfoCard() {
   ];
 
   return (
-    <div className="flex flex-col rounded-[16px] bg-white px-8 pt-8 shadow-[0px_4px_6px_-4px_rgba(0,0,0,0.1),0px_10px_15px_-3px_rgba(0,0,0,0.1)]">
-      <h2 className="text-2xl font-semibold leading-[1.33] text-[#1a1a1a] [font-family:var(--font-playfair)]">
+    <div className="flex flex-col rounded-[9.59px] bg-white px-[19.17px] pt-[19.17px] shadow-[0px_0px_3.59px_-2.4px_rgba(0,0,0,0.1),0px_0px_8.99px_-1.8px_rgba(0,0,0,0.1)] lg:rounded-[16px] lg:px-8 lg:pt-8 lg:shadow-[0px_4px_6px_-4px_rgba(0,0,0,0.1),0px_10px_15px_-3px_rgba(0,0,0,0.1)]">
+
+      {/* Title — centered on mobile (Figma 819:9192), left on desktop */}
+      <h2 className="text-center text-sm font-semibold leading-[1.4] text-[#1a1a1a] lg:text-left lg:text-2xl lg:leading-[1.33] [font-family:var(--font-playfair)]">
         Contact Information
       </h2>
 
-      <div className="mt-[24px] flex flex-col gap-[24px]">
+      <div className="mt-[14.38px] flex flex-col gap-[14.38px] lg:mt-6 lg:gap-6">
         {items.map(({ icon, label, content }) => (
-          <div key={label} className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[rgba(42,71,141,0.1)]">
+          <div key={label} className="flex items-start gap-[9.59px] lg:gap-4">
+            {/* Icon circle */}
+            <div className="flex h-[28.76px] w-[28.76px] shrink-0 items-center justify-center rounded-full bg-[rgba(42,71,141,0.1)] lg:h-12 lg:w-12">
               {icon}
             </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-[18px] font-semibold leading-[1.5] text-[#1a1a1a] [font-family:var(--font-playfair)]">
+            <div className="flex flex-col gap-[2.4px] lg:gap-1">
+              <span className="text-xs font-semibold leading-normal text-[#1a1a1a] lg:text-[18px] [font-family:var(--font-playfair)]">
                 {label}
               </span>
-              <span className="text-[16px] leading-[1.5] text-[#6b6b6b] [font-family:var(--font-dm-sans)]">
+              <span className="text-[10px] leading-normal text-[#6b6b6b] lg:text-[16px] [font-family:var(--font-dm-sans)]">
                 {content}
               </span>
             </div>
@@ -81,17 +84,16 @@ export function ContactInfoCard() {
         ))}
       </div>
 
-      {/* WhatsApp CTA */}
-      <div className="mt-8 border-t border-[rgba(26,26,26,0.1)] pt-8 pb-8">
+      {/* Chat on WhatsApp */}
+      <div className="mt-[14.38px] border-t border-[rgba(26,26,26,0.1)] pt-[19.77px] pb-[19.17px] lg:mt-8 lg:pb-8 lg:pt-8">
         <a
           href="https://wa.me/2348012345678"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex h-14 w-full items-center justify-center gap-3 rounded-[6px] bg-[#00C950] text-base font-semibold text-white hover:bg-[#00b347] transition-colors [font-family:var(--font-dm-sans)]"
+          className="flex h-9 w-full items-center justify-center gap-[9.59px] rounded-[3.59px] bg-[#00C950] text-xs font-semibold text-white transition-colors hover:bg-[#00b347] lg:h-14 lg:gap-3 lg:rounded-[6px] lg:text-base [font-family:var(--font-dm-sans)]"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" fill="white" />
-            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.534 5.858L0 24l6.323-1.517A11.942 11.942 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.68-.503-5.22-1.38l-.38-.22-3.75.9.93-3.64-.24-.38A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" fill="white" />
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="12" height="12" className="lg:h-5 lg:w-5">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
           </svg>
           Chat on WhatsApp
         </a>

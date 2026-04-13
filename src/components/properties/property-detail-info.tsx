@@ -26,35 +26,37 @@ export function PropertyDetailInfo({ property }: { property: Property }) {
   return (
     <div className="flex flex-col">
       {/* Title */}
-      <h1 className="text-[clamp(1.5rem,3vw,1.83rem)] font-medium leading-[1.11] text-[#2a478d] [font-family:var(--font-playfair)]">
+      <h1 className="text-[18px] font-medium leading-[1.12] text-[#2a478d] lg:text-[clamp(1.5rem,3vw,1.83rem)] [font-family:var(--font-playfair)]">
         {property.title}
       </h1>
 
       {/* Location */}
-      <div className="mt-[18px] flex items-start gap-[6px]">
-        <Image src="/assets/figma/icon-pin.svg" alt="" width={16} height={16} className="mt-0.5 shrink-0" />
-        <span className="text-[13px] leading-normal text-[#6b6b6b] [font-family:var(--font-dm-sans)]">
+      <div className="mt-[10px] flex items-start gap-[4px] lg:mt-[18px] lg:gap-[6px]">
+        <svg width="8.39" height="8.39" viewBox="0 0 14 14" fill="none" className="mt-0.5 shrink-0 lg:h-[16px] lg:w-[16px]">
+          <path d="M7 1C4.79 1 3 2.79 3 5c0 3.31 4 8 4 8s4-4.69 4-8c0-2.21-1.79-4-4-4zm0 5.5A1.5 1.5 0 1 1 7 3a1.5 1.5 0 0 1 0 3z" fill="#6b6b6b" />
+        </svg>
+        <span className="text-[10px] leading-normal text-[#6b6b6b] lg:text-[13px] [font-family:var(--font-dm-sans)]">
           {property.address}
         </span>
       </div>
 
       {/* Price */}
-      <p className="mt-[22px] text-[clamp(1.5rem,3vw,1.83rem)] font-bold leading-[1.11] text-[#2a478d] font-[Georgia,serif]">
+      <p className="mt-[10px] text-[15.1px] font-bold leading-[1.11] text-[#2a478d] lg:mt-[22px] lg:text-[clamp(1.5rem,3vw,1.83rem)] font-[Georgia,serif]">
         {property.price}
       </p>
 
-      {/* Stats grid */}
-      <div className="mt-[32px] grid grid-cols-4 gap-[13px]">
+      {/* Stats grid — Figma 819:9277: 4 equal tiles, light blue bg */}
+      <div className="mt-[10px] grid grid-cols-4 gap-[6.71px] lg:mt-[32px] lg:gap-[13px]">
         {stats.map(({ icon, value, label }) => (
           <div
             key={label}
-            className="flex flex-col rounded-[5px] bg-[rgba(42,71,141,0.1)] px-[13px] py-[13px]"
+            className="flex flex-col rounded-[2.52px] bg-[rgba(42,71,141,0.1)] px-[6.71px] py-[6.71px] lg:rounded-[5px] lg:px-[13px] lg:py-[13px]"
           >
-            <Image src={icon} alt="" width={20} height={20} />
-            <span className="mt-[14px] text-[19.5px] font-semibold leading-[1.33] text-[#1a1a1a] [font-family:var(--font-dm-sans)]">
+            <Image src={icon} alt="" width={10} height={10} className="lg:h-[20px]  lg:w-[20px]" />
+            <span className="mt-[8px] text-[12px] font-semibold leading-[1.33] text-[#1a1a1a] lg:mt-[14px] lg:text-[19.5px] [font-family:var(--font-dm-sans)]">
               {value}
             </span>
-            <span className="mt-[5px] text-[11.4px] leading-[1.43] text-[#6b6b6b] [font-family:var(--font-dm-sans)]">
+            <span className="mt-[2px] text-[10px] leading-[1.43] text-[#6b6b6b] lg:mt-[5px] lg:text-[11.4px] [font-family:var(--font-dm-sans)]">
               {label}
             </span>
           </div>

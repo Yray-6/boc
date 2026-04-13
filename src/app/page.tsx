@@ -5,7 +5,6 @@ import {
   SiteFooter,
   TestimonialsSection,
   WhyChooseSection,
-  WhatsAppFab,
 } from "@/components/home";
 import { properties, testimonials, whyChoose } from "@/data/home";
 
@@ -18,7 +17,6 @@ export default function Home() {
       <TestimonialsSection testimonials={testimonials} />
       <CtaSection />
       <SiteFooter />
-      <WhatsAppFab />
     </main>
   );
 }

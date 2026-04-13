@@ -2,29 +2,28 @@ import { ContactHero } from "@/components/contact/contact-hero";
 import { ContactInfoCard } from "@/components/contact/contact-info-card";
 import { ContactFormCard } from "@/components/contact/contact-form-card";
 import { SiteFooter } from "@/components/home/site-footer";
-import { WhatsAppFab } from "@/components/home/whatsapp-fab";
 
 export default function ContactPage() {
   return (
     <main className="min-h-screen bg-white text-[#1a1a1a]">
       <ContactHero />
 
-      <div className="mx-auto max-w-[1440px] px-4 py-12 sm:px-6 lg:px-[85px]">
-        <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-10">
-          {/* Left: Contact Information */}
-          <div className="w-full lg:w-[400px] xl:w-[440px] shrink-0">
-            <ContactInfoCard />
-          </div>
-
-          {/* Right: Contact Form */}
-          <div className="flex-1 min-w-0">
-            <ContactFormCard />
+      {/* -mt-8 pulls form card up to overlap hero on mobile; resets at lg */}
+      <div className="-mt-8 lg:mt-0">
+        <div className="mx-auto max-w-[1440px] px-4 pb-10 pt-0 sm:px-6 lg:px-[85px] lg:py-12">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-10">
+            {/* Mobile: form first (overlaps hero), info below — Desktop: info left, form right */}
+            <div className="relative z-10 flex-1 min-w-0 lg:order-2">
+              <ContactFormCard />
+            </div>
+            <div className="w-full lg:order-1 lg:w-[400px] xl:w-[440px] shrink-0">
+              <ContactInfoCard />
+            </div>
           </div>
         </div>
       </div>
 
       <SiteFooter />
-      <WhatsAppFab />
     </main>
   );
 }
