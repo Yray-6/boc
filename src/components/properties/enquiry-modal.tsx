@@ -125,7 +125,7 @@ export function EnquiryModal({ open, onClose, propertyId, propertyTitle }: Enqui
 
   return (
     <div
-      className="fixed inset-0 z-120 flex items-end justify-center p-0 sm:items-center sm:p-4"
+      className="fixed inset-0 z-120 flex items-end justify-center sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="enquiry-modal-title"
@@ -133,64 +133,77 @@ export function EnquiryModal({ open, onClose, propertyId, propertyTitle }: Enqui
       {/* Backdrop */}
       <button
         type="button"
-        className="absolute inset-0 bg-black/40"
+        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
         aria-label="Close"
         onClick={handleClose}
       />
 
-      {/* Panel */}
-      <div className="relative w-full max-w-[520px] rounded-t-[20px] bg-white px-5 pb-8 pt-6 shadow-xl sm:rounded-[20px] sm:px-8">
+      {/* Panel — bottom sheet on mobile, centered card on sm+ */}
+      <div className="relative flex w-full max-w-[520px] flex-col rounded-t-[20px] bg-white shadow-xl sm:rounded-[20px]
+                      max-h-[92dvh] sm:max-h-[calc(100dvh-2rem)]">
 
-        {/* Close button */}
-        <button
-          type="button"
-          onClick={handleClose}
-          aria-label="Close enquiry form"
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-[#6b6b6b] transition-colors hover:bg-[rgba(26,26,26,0.06)] hover:text-[#1a1a1a]"
-        >
+        {/* Drag handle (mobile only) */}
+        <div className="flex shrink-0 justify-center pt-3 pb-1 sm:hidden">
+          <div className="h-1 w-10 rounded-full bg-[rgba(26,26,26,0.15)]" />
+        </div>
+
+        {/* Header row — sticky inside panel */}
+        <div className="shrink-0 px-5 pt-4 pb-1 sm:px-8 sm:pt-6">
+          {/* Close button */}
+          <button
+            type="button"
+            onClick={handleClose}
+            aria-label="Close enquiry form"
+            className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-[#6b6b6b] transition-colors hover:bg-[rgba(26,26,26,0.06)] hover:text-[#1a1a1a] sm:right-5 sm:top-5"
+          >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
-        </button>
+          </button>
 
-        {/* ── Success state ── */}
-        {phase === "success" ? (
-          <div className="flex flex-col items-center py-6 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#DCFCE7]">
-              <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
-                <path d="M8 20L16 28L32 12" stroke="#00A63E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+          {/* ── Success state ── */}
+          {phase === "success" ? (
+            <div className="flex flex-col items-center py-6 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#DCFCE7]">
+                <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
+                  <path d="M8 20L16 28L32 12" stroke="#00A63E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <h2 className="mt-5 text-[22px] font-bold text-[#1a1a1a] [font-family:var(--font-playfair)]">
+                Enquiry Sent!
+              </h2>
+              <p className="mt-2 max-w-[340px] text-sm text-[#6b6b6b] [font-family:var(--font-dm-sans)]">
+                Thank you for your interest. An agent will get back to you shortly.
+              </p>
             </div>
-            <h2 className="mt-5 text-[22px] font-bold text-[#1a1a1a] [font-family:var(--font-playfair)]">
-              Enquiry Sent!
-            </h2>
-            <p className="mt-2 max-w-[340px] text-sm text-[#6b6b6b] [font-family:var(--font-dm-sans)]">
-              Thank you for your interest. An agent will get back to you shortly.
-            </p>
+          ) : (
+            <>
+              <h2
+                id="enquiry-modal-title"
+                className="pr-8 text-[18px] font-semibold text-[#1a1a1a] sm:text-[20px] [font-family:var(--font-playfair)]"
+              >
+                Send Enquiry
+              </h2>
+              {propertyTitle && (
+                <p className="mt-1 text-[12px] text-[#6b6b6b] sm:text-[13px] [font-family:var(--font-dm-sans)]">
+                  Re: <span className="font-medium text-[#1a1a1a]">{propertyTitle}</span>
+                </p>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-5 pb-6 pt-4 sm:px-8 sm:pb-8">
+          {phase === "success" ? (
             <button
               type="button"
               onClick={handleClose}
-              className="mt-8 flex h-[44px] w-full max-w-[280px] items-center justify-center rounded-[8px] bg-[#2a478d] text-sm font-medium text-white transition-colors hover:bg-[#1d3260] [font-family:var(--font-dm-sans)]"
+              className="mt-4 flex h-[44px] w-full items-center justify-center rounded-[8px] bg-[#2a478d] text-sm font-medium text-white transition-colors hover:bg-[#1d3260] [font-family:var(--font-dm-sans)]"
             >
               Close
             </button>
-          </div>
-        ) : (
-          <>
-            <h2
-              id="enquiry-modal-title"
-              className="mb-[4px] text-[20px] font-semibold text-[#1a1a1a] [font-family:var(--font-playfair)]"
-            >
-              Send Enquiry
-            </h2>
-            {propertyTitle ? (
-              <p className="mb-5 text-[13px] text-[#6b6b6b] [font-family:var(--font-dm-sans)]">
-                Re: <span className="font-medium text-[#1a1a1a]">{propertyTitle}</span>
-              </p>
-            ) : (
-              <div className="mb-5" />
-            )}
-
+          ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
               {/* Enquiry type */}
               <div>
@@ -228,32 +241,32 @@ export function EnquiryModal({ open, onClose, propertyId, propertyTitle }: Enqui
                 />
               </div>
 
-              {/* Email */}
-              <div>
-                <label htmlFor="eq-email" className={labelCls}>Email Address <span className="text-red-500">*</span></label>
-                <input
-                  id="eq-email"
-                  type="email"
-                  required
-                  placeholder="you@example.com"
-                  value={form.email}
-                  onChange={(e) => set({ email: e.target.value })}
-                  className={inputCls}
-                />
-              </div>
-
-              {/* Phone */}
-              <div>
-                <label htmlFor="eq-phone" className={labelCls}>Phone Number <span className="text-red-500">*</span></label>
-                <input
-                  id="eq-phone"
-                  type="tel"
-                  required
-                  placeholder="+234 800 000 0000"
-                  value={form.phone}
-                  onChange={(e) => set({ phone: e.target.value })}
-                  className={inputCls}
-                />
+              {/* Email + Phone side by side on sm+ */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="eq-email" className={labelCls}>Email Address <span className="text-red-500">*</span></label>
+                  <input
+                    id="eq-email"
+                    type="email"
+                    required
+                    placeholder="you@example.com"
+                    value={form.email}
+                    onChange={(e) => set({ email: e.target.value })}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="eq-phone" className={labelCls}>Phone Number <span className="text-red-500">*</span></label>
+                  <input
+                    id="eq-phone"
+                    type="tel"
+                    required
+                    placeholder="+234 800 000 0000"
+                    value={form.phone}
+                    onChange={(e) => set({ phone: e.target.value })}
+                    className={inputCls}
+                  />
+                </div>
               </div>
 
               {/* Message */}
@@ -280,7 +293,7 @@ export function EnquiryModal({ open, onClose, propertyId, propertyTitle }: Enqui
               <button
                 type="submit"
                 disabled={phase === "submitting"}
-                className="mt-1 flex h-[44px] w-full items-center justify-center gap-2 rounded-[8px] bg-[#2a478d] text-sm font-medium text-white transition-colors hover:bg-[#1d3260] disabled:opacity-60 [font-family:var(--font-dm-sans)]"
+                className="flex h-[48px] w-full items-center justify-center gap-2 rounded-[8px] bg-[#2a478d] text-sm font-medium text-white transition-colors hover:bg-[#1d3260] disabled:opacity-60 [font-family:var(--font-dm-sans)]"
               >
                 {phase === "submitting" ? (
                   <>
@@ -295,8 +308,8 @@ export function EnquiryModal({ open, onClose, propertyId, propertyTitle }: Enqui
                 )}
               </button>
             </form>
-          </>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

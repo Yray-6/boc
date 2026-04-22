@@ -60,7 +60,10 @@ export function PropertiesListing({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const skipFetchOnce = useRef(true);
+  // Skip the first client-side fetch only when SSR already returned data.
+  // If SSR came back empty (backend cold start, network hiccup, etc.) we
+  // should still fetch on mount so the page isn't stuck showing "no results".
+  const skipFetchOnce = useRef(initialProperties.length > 0);
 
   const load = useCallback(
     async (f: FilterState, s: SortKey, p: number, signal?: AbortSignal) => {
