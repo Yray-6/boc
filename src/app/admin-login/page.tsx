@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { Suspense } from "react";
 import { AdminLoginForm } from "@/components/admin/admin-login-form";
 
 export const metadata: Metadata = {
@@ -43,7 +44,9 @@ export default function AdminLoginPage() {
           </p>
         </div>
 
-        <AdminLoginForm />
+        <Suspense fallback={<div className="h-[280px] w-full max-w-[504px]" />}>
+          <AdminLoginForm />
+        </Suspense>
 
         <div className="flex max-w-[382px] flex-col items-center gap-1 text-center">
           <p className="font-sans text-xs leading-[1.333] text-[#90A1B9]">

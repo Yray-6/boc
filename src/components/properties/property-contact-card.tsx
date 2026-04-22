@@ -1,41 +1,75 @@
-import Image from "next/image";
+"use client";
 
-interface PropertyContactCardProps {
-  agentImage?: string;
-  agentName?: string;
+import { useState } from "react";
+import { RemoteOrLocalImage } from "@/components/common/remote-or-local-image";
+import { EnquiryModal } from "@/components/properties/enquiry-modal";
+
+export interface PropertyAgent {
+  full_name: string;
+  title?: string;
+  specialisation?: string;
+  years_of_experience?: number;
+  phone?: string;
+  whatsapp_link?: string;
+  avatar_url?: string | null;
 }
 
+interface PropertyContactCardProps {
+  agent?: PropertyAgent | null;
+  propertyId?: number;
+  propertyTitle?: string;
+}
+
+const DEFAULT_AVATAR = "/assets/figma/agent-1.png";
+const DEFAULT_WHATSAPP = "https://wa.me/2348000000000";
+
 /** Contact card — Figma 819:7311 (desktop) + 819:9366 (mobile) */
-export function PropertyContactCard({
-  agentImage = "/assets/figma/agent-1.png",
-  agentName = "BOC Agent - 0027",
-}: PropertyContactCardProps) {
+export function PropertyContactCard({ agent, propertyId, propertyTitle }: PropertyContactCardProps) {
+  const [enquiryOpen, setEnquiryOpen] = useState(false);
+  const name = agent?.full_name ?? "BOC Agent";
+  const title = agent?.title ?? "";
+  const specialisation = agent?.specialisation ?? "";
+  const years = agent?.years_of_experience;
+  const avatar = agent?.avatar_url?.trim() || DEFAULT_AVATAR;
+  const whatsappHref = agent?.whatsapp_link?.trim() || DEFAULT_WHATSAPP;
+
   return (
     <>
+      {propertyId !== undefined ? (
+        <EnquiryModal
+          open={enquiryOpen}
+          onClose={() => setEnquiryOpen(false)}
+          propertyId={propertyId}
+          propertyTitle={propertyTitle}
+        />
+      ) : null}
+
       {/* ── Mobile: compact horizontal card (Figma 819:9366) ── */}
       <div className="relative flex flex-col gap-[10.75px] rounded-[7.17px] bg-white px-[10.75px] pt-[10.75px] pb-[10.75px] shadow-[0px_0px_2.69px_-1.79px_rgba(0,0,0,0.1),0px_0px_6.72px_-1.34px_rgba(0,0,0,0.1)] lg:hidden">
-        {/* Title */}
         <h3 className="text-[12px] font-semibold leading-[1.4] text-[#1a1a1a] [font-family:var(--font-playfair)]">
           Contact Us
         </h3>
 
-        {/* Agent row + icon buttons */}
         <div className="flex items-center justify-between">
-          {/* Agent info */}
           <div className="flex items-center gap-[5.37px]">
-            <div className="relative h-[28.66px] w-[28.66px] shrink-0 overflow-hidden rounded-full">
-              <Image src={agentImage} alt={agentName} fill className="object-cover" />
+            <div className="relative h-[28.66px] w-[28.66px] shrink-0 overflow-hidden rounded-full bg-[rgba(42,71,141,0.08)]">
+              <RemoteOrLocalImage src={avatar} alt={name} fill className="object-cover" />
             </div>
-            <span className="text-[11px] font-semibold leading-[1.22] text-[#1a1a1a] [font-family:var(--font-playfair)]">
-              {agentName}
-            </span>
+            <div className="flex flex-col">
+              <span className="text-[11px] font-semibold leading-[1.22] text-[#1a1a1a] [font-family:var(--font-playfair)]">
+                {name}
+              </span>
+              {title ? (
+                <span className="text-[9px] text-[#6b6b6b] [font-family:var(--font-dm-sans)]">{title}</span>
+              ) : null}
+            </div>
           </div>
 
-          {/* Action icon buttons */}
           <div className="flex items-center gap-[10px]">
-            {/* Send Enquiry — envelope */}
             <button
+              type="button"
               aria-label="Send Enquiry"
+              onClick={() => setEnquiryOpen(true)}
               className="flex h-[40px] w-[40px] items-center justify-center rounded-full bg-[#2a478d] shadow-sm transition-opacity hover:opacity-90"
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -43,9 +77,8 @@ export function PropertyContactCard({
               </svg>
             </button>
 
-            {/* WhatsApp Agent */}
             <a
-              href="https://wa.me/2348000000000"
+              href={whatsappHref}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="WhatsApp Agent"
@@ -66,23 +99,55 @@ export function PropertyContactCard({
         </h3>
 
         <div className="flex items-center gap-[10.9px]">
-          <div className="relative h-[58px] w-[58px] shrink-0 overflow-hidden rounded-full">
-            <Image src={agentImage} alt={agentName} fill className="object-cover" />
+          <div className="relative h-[58px] w-[58px] shrink-0 overflow-hidden rounded-full bg-[rgba(42,71,141,0.08)]">
+            <RemoteOrLocalImage src={avatar} alt={name} fill className="object-cover" />
           </div>
-          <span className="text-[14.5px] font-semibold leading-normal text-[#1a1a1a] [font-family:var(--font-playfair)]">
-            {agentName}
-          </span>
+          <div className="flex flex-col gap-[2px]">
+            <span className="text-[14.5px] font-semibold leading-normal text-[#1a1a1a] [font-family:var(--font-playfair)]">
+              {name}
+            </span>
+            {title ? (
+              <span className="text-[12px] text-[#6b6b6b] [font-family:var(--font-dm-sans)]">{title}</span>
+            ) : null}
+          </div>
         </div>
 
+        {(specialisation || years !== undefined) && (
+          <div className="flex flex-col gap-[6px] rounded-[8px] bg-[rgba(42,71,141,0.05)] px-4 py-3">
+            {specialisation ? (
+              <div className="flex flex-col gap-[2px]">
+                <span className="text-[10px] font-medium uppercase tracking-wide text-[rgba(26,26,26,0.5)] [font-family:var(--font-dm-sans)]">
+                  Specialisation
+                </span>
+                <span className="text-[13px] text-[#1a1a1a] [font-family:var(--font-dm-sans)]">{specialisation}</span>
+              </div>
+            ) : null}
+            {years !== undefined && years > 0 ? (
+              <div className="flex flex-col gap-[2px]">
+                <span className="text-[10px] font-medium uppercase tracking-wide text-[rgba(26,26,26,0.5)] [font-family:var(--font-dm-sans)]">
+                  Experience
+                </span>
+                <span className="text-[13px] text-[#1a1a1a] [font-family:var(--font-dm-sans)]">
+                  {years} {years === 1 ? "year" : "years"}
+                </span>
+              </div>
+            ) : null}
+          </div>
+        )}
+
         <div className="flex flex-col gap-[10.9px] pb-[21.7px]">
-          <button className="flex h-[43.4px] w-full items-center justify-center gap-2 rounded-[5.4px] bg-[#2a478d] text-[14.5px] font-medium text-white [font-family:var(--font-dm-sans)]">
+          <button
+            type="button"
+            onClick={() => setEnquiryOpen(true)}
+            className="flex h-[43.4px] w-full items-center justify-center gap-2 rounded-[5.4px] bg-[#2a478d] text-[14.5px] font-medium text-white [font-family:var(--font-dm-sans)]"
+          >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
               <path d="M2 7.75C2 6.784 2.784 6 3.75 6h16.5c.966 0 1.75.784 1.75 1.75v8.5A1.75 1.75 0 0 1 20.25 18H3.75A1.75 1.75 0 0 1 2 16.25v-8.5zm1.75-.25a.25.25 0 0 0-.25.25v.852l8.5 5.312 8.5-5.312V7.75a.25.25 0 0 0-.25-.25H3.75zm16.75 2.66-6.96 4.351a1.5 1.5 0 0 1-1.58 0L3.5 10.16V16.25c0 .138.112.25.25.25h16.5a.25.25 0 0 0 .25-.25V10.16z" fill="white" />
             </svg>
             Send Enquiry
           </button>
           <a
-            href="https://wa.me/2348000000000"
+            href={whatsappHref}
             target="_blank"
             rel="noopener noreferrer"
             className="flex h-[43.4px] w-full items-center justify-center gap-2 rounded-[5.4px] bg-[#00C950] text-[14.5px] font-medium text-white [font-family:var(--font-dm-sans)]"

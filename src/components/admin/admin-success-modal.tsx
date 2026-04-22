@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export type AdminSuccessVariant =
@@ -80,7 +79,6 @@ export function AdminSuccessModal({
   variant,
   onClose,
 }: AdminSuccessModalProps) {
-  const router = useRouter();
 
   useEffect(() => {
     if (!open) return;
@@ -103,11 +101,6 @@ export function AdminSuccessModal({
   if (!open || !variant) return null;
 
   const { title, description } = ADMIN_SUCCESS_COPY[variant];
-
-  function goDashboard() {
-    onClose();
-    router.push("/admin");
-  }
 
   return (
     <div
@@ -138,10 +131,10 @@ export function AdminSuccessModal({
         <div className="mx-auto mt-8 max-w-[510px]">
           <button
             type="button"
-            onClick={goDashboard}
+            onClick={onClose}
             className="flex h-12 w-full items-center justify-center rounded-lg bg-[#003A8C] text-base font-normal leading-normal text-white transition-colors hover:bg-[#002f73]"
           >
-            Return to Dashboard
+            Close
           </button>
         </div>
       </div>

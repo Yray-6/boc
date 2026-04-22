@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import type { PropertyType } from "@/data/home";
+import { RemoteOrLocalImage } from "@/components/common/remote-or-local-image";
 
 interface PropertyImageCarouselProps {
   images: string[];
@@ -14,6 +14,7 @@ const TYPE_LABEL: Record<PropertyType, string> = {
   BUY: "FOR BUY",
   RENT: "FOR RENT",
   LEASE: "FOR LEASE",
+  SHORT_LET: "SHORT LET",
 };
 
 export function PropertyImageCarousel({ images, title, type }: PropertyImageCarouselProps) {
@@ -27,7 +28,7 @@ export function PropertyImageCarousel({ images, title, type }: PropertyImageCaro
     <>
       {/* ── Mobile carousel (no radius, taller ratio, counter pill) ── */}
       <div className="relative w-full overflow-hidden lg:hidden" style={{ aspectRatio: "404/264" }}>
-        <Image
+        <RemoteOrLocalImage
           src={images[index]}
           alt={title}
           fill
@@ -79,7 +80,7 @@ export function PropertyImageCarousel({ images, title, type }: PropertyImageCaro
 
       {/* ── Desktop carousel (rounded, wide ratio, dots) ── */}
       <div className="relative hidden w-full overflow-hidden rounded-[20px] lg:block" style={{ aspectRatio: "1240/487" }}>
-        <Image
+        <RemoteOrLocalImage
           src={images[index]}
           alt={title}
           fill

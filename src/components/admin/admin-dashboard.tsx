@@ -1,77 +1,106 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useMemo, useState } from "react";
+import { useAdminDashboardQuery } from "@/lib/hooks/use-admin-dashboard-query";
+import {
+  PropertyDetailsModal,
+} from "@/components/admin/property-details-modal";
+import { useAdminPropertyDetailQuery } from "@/lib/hooks/use-admin-properties-queries";
+import { detailToPropertyDetail } from "@/lib/admin-property-mappers";
 
-const stats = [
-  {
-    label: "Total Listings",
-    value: "143",
-    delta: "12%",
-    icon: "/admin-dashboard/dash-stat-listings.svg",
-    showDelta: true,
-  },
-  {
-    label: "Active Listings",
-    value: "89",
-    delta: "5%",
-    icon: "/admin-dashboard/dash-stat-active.svg",
-    showDelta: true,
-  },
-  {
-    label: "Total Agents",
-    value: "12",
-    icon: "/admin-dashboard/dash-stat-agents.svg",
-    showDelta: false,
-    delta: undefined,
-  },
-] as const;
+const LISTING_TYPE_COLORS: Record<string, string> = {
+  BUY: "#003A8C",
+  RENT: "#14B8A6",
+  LEASE: "#8B5CF6",
+  SHORT_LET: "#F59E0B",
+};
+const LISTING_TYPE_FALLBACK_COLORS = ["#003A8C", "#14B8A6", "#8B5CF6", "#F59E0B", "#EC4899"];
 
-const recentRows: (
-  | {
-      kind: "sale";
-      title: string;
-      address: string;
-      price: string;
-      badge: string;
-      image: string;
-    }
-  | {
-      kind: "views";
-      title: string;
-      address: string;
-      views: string;
-      image: string;
-    }
-)[] = [
-  {
-    kind: "sale",
-    title: "Luxury 5 Bedroom Duplex",
-    address: "Lekki Phase 1, Lagos Island.",
-    price: "₦250,000,000",
-    badge: "Buy",
-    image: "/admin-dashboard/dash-thumb-1-36497e.png",
-  },
-  {
-    kind: "sale",
-    title: "Modern 3 Bedroom Apartment",
-    address: "GRA, Ikoyi, Lagos Island",
-    price: "₦250,000,000",
-    badge: "Buy",
-    image: "/admin-dashboard/dash-thumb-2-36497e.png",
-  },
-  {
-    kind: "views",
-    title: "Modern 3 Bedroom Apartment",
-    address: "GRA, Ikoyi, Lagos Island",
-    views: "11,735",
-    image: "/admin-dashboard/dash-thumb-2-36497e.png",
-  },
-];
+const LISTING_TYPE_LABELS: Record<string, string> = {
+  BUY: "Buy",
+  RENT: "Rent",
+  LEASE: "Lease",
+  SHORT_LET: "Short Let",
+};
 
-const purchaseLegend = [
-  { label: "Buy", pct: "65%", color: "#003A8C" },
-  { label: "Rent", pct: "25%", color: "#14B8A6" },
-  { label: "Lease", pct: "10%", color: "#8B5CF6" },
-] as const;
+function formatListingTypeLabel(key: string): string {
+  return (
+    LISTING_TYPE_LABELS[key] ??
+    key
+      .toLowerCase()
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+  );
+}
+
+const DONUT_R = 80;
+const DONUT_CX = 100;
+const DONUT_CY = 100;
+const DONUT_STROKE = 32;
+
+function DonutChart({
+  segments,
+}: {
+  segments: { pct: number; color: string }[];
+}) {
+  const circumference = 2 * Math.PI * DONUT_R;
+  const total = segments.reduce((s, x) => s + x.pct, 0);
+  if (total === 0) {
+    return (
+      <svg viewBox="0 0 200 200" className="h-auto w-full max-w-[200px]">
+        <circle
+          cx={DONUT_CX}
+          cy={DONUT_CY}
+          r={DONUT_R}
+          fill="none"
+          stroke="#F3F4F6"
+          strokeWidth={DONUT_STROKE}
+        />
+      </svg>
+    );
+  }
+
+  let offset = circumference * 0.25;
+  const arcs: { dasharray: string; dashoffset: number; color: string }[] = [];
+  for (const seg of segments) {
+    const frac = seg.pct / 100;
+    const dash = frac * circumference;
+    arcs.push({
+      dasharray: `${dash} ${circumference - dash}`,
+      dashoffset: circumference - offset,
+      color: seg.color,
+    });
+    offset += dash;
+  }
+
+  return (
+    <svg viewBox="0 0 200 200" className="h-auto w-full max-w-[200px]">
+      <circle
+        cx={DONUT_CX}
+        cy={DONUT_CY}
+        r={DONUT_R}
+        fill="none"
+        stroke="#F3F4F6"
+        strokeWidth={DONUT_STROKE}
+      />
+      {arcs.map((arc, i) => (
+        <circle
+          key={i}
+          cx={DONUT_CX}
+          cy={DONUT_CY}
+          r={DONUT_R}
+          fill="none"
+          stroke={arc.color}
+          strokeWidth={DONUT_STROKE}
+          strokeDasharray={arc.dasharray}
+          strokeDashoffset={arc.dashoffset}
+        />
+      ))}
+    </svg>
+  );
+}
 
 function EyeIcon({ className }: { className?: string }) {
   return (
@@ -101,11 +130,77 @@ function EyeIcon({ className }: { className?: string }) {
 }
 
 export function AdminDashboard() {
+  const dashboardQuery = useAdminDashboardQuery();
+  const data = dashboardQuery.data;
+
+  const [viewSlug, setViewSlug] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const viewDetailQuery = useAdminPropertyDetailQuery(viewSlug);
+  const viewDetail = viewDetailQuery.data
+    ? detailToPropertyDetail(viewDetailQuery.data)
+    : null;
+
+  const stats = useMemo(
+    () => [
+      {
+        label: "Total Listings",
+        value: String(data?.total_listings ?? 0),
+        icon: "/admin-dashboard/dash-stat-listings.svg",
+      },
+      {
+        label: "Active Listings",
+        value: String(data?.active_listings ?? 0),
+        icon: "/admin-dashboard/dash-stat-active.svg",
+      },
+      {
+        label: "Total Agents",
+        value: String(data?.total_agents ?? 0),
+        icon: "/admin-dashboard/dash-stat-agents.svg",
+      },
+    ],
+    [data],
+  );
+
+  const recentRows = useMemo(
+    () =>
+      (data?.recently_listed ?? []).map((row) => ({
+        slug: row.slug,
+        title: row.title,
+        address: [row.neighborhood, row.city].filter(Boolean).join(", ") || "—",
+        views: Number(row.views_count ?? 0).toLocaleString(),
+        image:
+          row.primary_image && row.primary_image.startsWith("http")
+            ? row.primary_image
+            : "/admin-dashboard/dash-thumb-1-36497e.png",
+      })),
+    [data],
+  );
+
+  const purchaseLegend = useMemo(() => {
+    const entries = Object.entries(data?.listing_type_breakdown ?? {});
+    return entries.map(([key, value], idx) => ({
+      key,
+      label: formatListingTypeLabel(key),
+      pct: Math.round(value?.percentage ?? 0),
+      color:
+        LISTING_TYPE_COLORS[key] ??
+        LISTING_TYPE_FALLBACK_COLORS[idx % LISTING_TYPE_FALLBACK_COLORS.length],
+    }));
+  }, [data]);
+
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-8 [font-family:var(--font-urbanist)]">
+    <div className="flex flex-col gap-6 px-4 py-6 sm:gap-8 sm:p-6 md:p-8 [font-family:var(--font-urbanist)]">
+      <PropertyDetailsModal
+        property={viewDetail}
+        open={detailOpen}
+        onClose={() => {
+          setDetailOpen(false);
+          setViewSlug(null);
+        }}
+      />
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex max-w-2xl flex-col gap-1">
-          <h1 className="text-[30px] font-bold leading-[1.2] tracking-[-0.025em] text-[#1A1D24]">
+          <h1 className="text-2xl font-bold leading-[1.2] tracking-[-0.025em] text-[#1A1D24] sm:text-[30px]">
             Dashboard Overview
           </h1>
           <p className="text-base font-normal leading-normal text-[#99A1AF]">
@@ -142,6 +237,14 @@ export function AdminDashboard() {
         </div>
       </div>
 
+      {dashboardQuery.error ? (
+        <p className="text-sm font-semibold text-red-600" role="alert">
+          {dashboardQuery.error instanceof Error
+            ? dashboardQuery.error.message
+            : "Failed to load dashboard"}
+        </p>
+      ) : null}
+
       <div className="grid gap-6 md:grid-cols-3">
         {stats.map((card) => (
           <div
@@ -164,17 +267,8 @@ export function AdminDashboard() {
               <p className="text-[30px] font-bold leading-[1.2] tracking-[-0.025em] text-[#1A1D24]">
                 {card.value}
               </p>
-              {card.showDelta && card.delta ? (
-                <span className="inline-flex items-center gap-1 rounded-lg bg-[#F0FDF4] px-2 py-1 text-xs font-bold leading-[1.333] text-[#00A63E]">
-                  <Image
-                    src="/admin-dashboard/dash-trend-up.svg"
-                    alt=""
-                    width={12}
-                    height={12}
-                    className="size-3"
-                  />
-                  {card.delta}
-                </span>
+              {dashboardQuery.isLoading ? (
+                <span className="text-xs text-[#99A1AF]">Loading...</span>
               ) : null}
             </div>
           </div>
@@ -189,7 +283,7 @@ export function AdminDashboard() {
           <ul className="flex flex-col">
             {recentRows.map((row, i) => (
               <li
-                key={`${row.kind}-${i}`}
+                key={`recent-${i}`}
                 className="flex flex-col gap-4 border-b border-[#F3F4F6] py-4 first:pt-0 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
               >
                 <div className="flex min-w-0 flex-1 items-center gap-4">
@@ -211,28 +305,25 @@ export function AdminDashboard() {
                     </p>
                   </div>
                 </div>
-                {row.kind === "sale" ? (
-                  <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center sm:gap-3">
-                    <p className="text-sm font-normal leading-[1.4286] text-[#4A5565]">
-                      {row.price}
-                    </p>
-                    <span className="inline-flex w-10 justify-center rounded-lg bg-[#2A478D] px-0 py-1 text-xs font-normal leading-[1.333] text-white">
-                      {row.badge}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="relative flex shrink-0 flex-col items-end gap-0.5 pl-6 sm:min-w-[133px]">
-                    <EyeIcon className="absolute left-2 top-1/2 -translate-y-1/2 sm:left-3" />
-                    <p className="text-sm font-normal leading-[1.4286] text-[#4A5565]">
-                      {row.views}
-                    </p>
-                    <p className="text-xs font-normal leading-[1.333] text-[#99A1AF]">
-                      Total Views
-                    </p>
-                  </div>
-                )}
+                <div className="flex shrink-0 items-center gap-4">
+               
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewSlug(row.slug);
+                      setDetailOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg border border-[#E5E7EB] bg-white px-3 py-1.5 text-xs font-semibold text-[#1A1D24] shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.1)] transition-colors hover:bg-gray-50"
+                  >
+                    <EyeIcon />
+                    View
+                  </button>
+                </div>
               </li>
             ))}
+            {!dashboardQuery.isLoading && recentRows.length === 0 ? (
+              <li className="py-4 text-sm text-[#99A1AF]">No recent listings.</li>
+            ) : null}
           </ul>
         </section>
 
@@ -241,13 +332,7 @@ export function AdminDashboard() {
             Listings by Purchase Type
           </h2>
           <div className="flex justify-center pt-4">
-            <Image
-              src="/admin-dashboard/dash-chart-donut.svg"
-              alt="Listings by purchase type: 65% Buy, 25% Rent, 10% Lease"
-              width={316}
-              height={256}
-              className="h-auto w-full max-w-[316px]"
-            />
+            <DonutChart segments={purchaseLegend} />
           </div>
           <ul className="flex flex-col gap-3">
             {purchaseLegend.map((item) => (
@@ -265,10 +350,13 @@ export function AdminDashboard() {
                   </span>
                 </span>
                 <span className="font-bold leading-[1.4286] text-[#1A1D24]">
-                  {item.pct}
+                  {item.pct}%
                 </span>
               </li>
             ))}
+            {!dashboardQuery.isLoading && purchaseLegend.length === 0 ? (
+              <li className="text-sm text-[#99A1AF]">No listing type data.</li>
+            ) : null}
           </ul>
         </section>
       </div>

@@ -2,13 +2,39 @@
 
 import Image from "next/image";
 import { FormEvent, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { adminLogin } from "@/lib/admin-auth-client";
+
+function safeInternalPath(next: string | null): string {
+  if (!next || !next.startsWith("/") || next.startsWith("//")) {
+    return "/admin";
+  }
+  return next;
+}
 
 export function AdminLoginForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [remember, setRemember] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function onSubmit(e: FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    // Wire to auth when backend exists
+    setError(null);
+    setSubmitting(true);
+    try {
+      await adminLogin(username.trim(), password, remember);
+      const next = safeInternalPath(searchParams.get("next"));
+      router.replace(next);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -17,12 +43,21 @@ export function AdminLoginForm() {
       onSubmit={onSubmit}
       noValidate
     >
+      {error ? (
+        <p
+          className="rounded-[14px] border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
+
       <div className="flex flex-col gap-2">
         <label
           className="text-left text-sm leading-[1.4286] text-[#314158]"
-          htmlFor="admin-email"
+          htmlFor="admin-username"
         >
-          Email Address
+          Username
         </label>
         <div className="relative h-[50px]">
           <span
@@ -38,13 +73,15 @@ export function AdminLoginForm() {
             />
           </span>
           <input
-            id="admin-email"
-            name="email"
-            type="email"
-            autoComplete="email"
+            id="admin-username"
+            name="username"
+            type="text"
+            autoComplete="username"
             required
-            placeholder=""
-            className="h-[50px] w-full rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] py-3 pl-10 pr-3 text-sm text-[#0F172B] outline-none ring-[#2A478D]/30 placeholder:text-[#90A1B9] focus:border-[#2A478D] focus:ring-2"
+            value={username}
+            onChange={(ev) => setUsername(ev.target.value)}
+            disabled={submitting}
+            className="h-[50px] w-full rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] py-3 pl-10 pr-3 text-sm text-[#0F172B] outline-none ring-[#2A478D]/30 placeholder:text-[#90A1B9] focus:border-[#2A478D] focus:ring-2 disabled:opacity-60"
           />
         </div>
       </div>
@@ -75,7 +112,10 @@ export function AdminLoginForm() {
             type="password"
             autoComplete="current-password"
             required
-            className="h-[50px] w-full rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] py-3 pl-10 pr-3 text-sm text-[#0F172B] outline-none ring-[#2A478D]/30 placeholder:text-[#90A1B9] focus:border-[#2A478D] focus:ring-2"
+            value={password}
+            onChange={(ev) => setPassword(ev.target.value)}
+            disabled={submitting}
+            className="h-[50px] w-full rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] py-3 pl-10 pr-3 text-sm text-[#0F172B] outline-none ring-[#2A478D]/30 placeholder:text-[#90A1B9] focus:border-[#2A478D] focus:ring-2 disabled:opacity-60"
           />
         </div>
       </div>
@@ -87,7 +127,8 @@ export function AdminLoginForm() {
             name="remember"
             checked={remember}
             onChange={(e) => setRemember(e.target.checked)}
-            className="size-4 rounded border-[#E2E8F0] text-[#2A478D] focus:ring-[#2A478D]"
+            disabled={submitting}
+            className="size-4 rounded border-[#E2E8F0] text-[#2A478D] focus:ring-[#2A478D] disabled:opacity-60"
           />
           <span className="text-sm leading-[1.4286] text-[#45556C]">
             Remember me
@@ -103,9 +144,10 @@ export function AdminLoginForm() {
 
       <button
         type="submit"
-        className="relative flex h-[50px] w-full items-center justify-center gap-2 rounded-[14px] border border-transparent bg-[#2A478D] text-sm font-bold leading-[1.4286] text-white shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.1),0px_1px_3px_0px_rgba(0,0,0,0.1)] transition hover:bg-[#243d75] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2A478D]"
+        disabled={submitting}
+        className="relative flex h-[50px] w-full items-center justify-center gap-2 rounded-[14px] border border-transparent bg-[#2A478D] text-sm font-bold leading-[1.4286] text-white shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.1),0px_1px_3px_0px_rgba(0,0,0,0.1)] transition hover:bg-[#243d75] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2A478D] disabled:opacity-60"
       >
-        Sign In
+        {submitting ? "Signing in…" : "Sign In"}
         <Image
           src="/admin-login/icon-arrow.svg"
           alt=""

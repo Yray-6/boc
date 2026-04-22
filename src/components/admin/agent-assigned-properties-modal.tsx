@@ -1,11 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useEffect } from "react";
 
 export type AgentAssignedListing = {
   id: string;
+  slug: string;
   title: string;
   location: string;
   price: string;
@@ -18,6 +18,7 @@ type AgentAssignedPropertiesModalProps = {
   listings: AgentAssignedListing[];
   open: boolean;
   onClose: () => void;
+  onView?: (slug: string) => void;
 };
 
 function IconEyeTiny({ className }: { className?: string }) {
@@ -41,7 +42,13 @@ function IconEyeTiny({ className }: { className?: string }) {
   );
 }
 
-function ListingCard({ row }: { row: AgentAssignedListing }) {
+function ListingCard({
+  row,
+  onView,
+}: {
+  row: AgentAssignedListing;
+  onView?: (slug: string) => void;
+}) {
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-[#F3F4F6] p-4 sm:flex-row sm:items-stretch">
       <div className="relative h-[78px] w-[78px] shrink-0 overflow-hidden rounded-lg border border-[#F3F4F6] bg-[#F3F4F6]">
@@ -68,13 +75,14 @@ function ListingCard({ row }: { row: AgentAssignedListing }) {
             </span>
           </div>
           <div className="flex shrink-0 items-center">
-            <Link
-              href="/admin/properties"
+            <button
+              type="button"
+              onClick={() => onView?.(row.slug)}
               className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1.5 text-[10px] font-semibold leading-normal text-[#99A1AF] shadow-[0px_0px_4px_0px_rgba(0,0,0,0.25)] transition-colors hover:bg-gray-50"
             >
               <IconEyeTiny className="shrink-0" />
               View
-            </Link>
+            </button>
           </div>
         </div>
         <div className="flex items-center gap-1.5 text-[10px] font-light leading-normal text-black">
@@ -100,6 +108,7 @@ export function AgentAssignedPropertiesModal({
   listings,
   open,
   onClose,
+  onView,
 }: AgentAssignedPropertiesModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -166,7 +175,7 @@ export function AgentAssignedPropertiesModal({
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-6 sm:px-8">
           <div className="flex flex-col gap-4">
             {listings.map((row) => (
-              <ListingCard key={row.id} row={row} />
+              <ListingCard key={row.id} row={row} onView={onView} />
             ))}
           </div>
         </div>

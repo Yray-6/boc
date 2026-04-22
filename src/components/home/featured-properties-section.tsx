@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRef, useState, useCallback } from "react";
 import type { Property } from "@/data/home";
+import { RemoteOrLocalImage } from "@/components/common/remote-or-local-image";
 
 interface FeaturedPropertiesSectionProps {
   properties: Property[];
@@ -30,6 +31,29 @@ export function FeaturedPropertiesSection({ properties }: FeaturedPropertiesSect
     const i = Math.round(track.scrollLeft / (cardWidth + 29));
     setActiveIndex(Math.min(Math.max(i, 0), properties.length - 1));
   }, [properties.length]);
+
+  if (properties.length === 0) {
+    return (
+      <section className="w-full py-10 sm:py-[60px]">
+        <div className="mb-8 flex flex-col items-center px-6 text-center sm:mb-[37px] sm:px-10 lg:px-[76px]">
+          <h2 className="text-[28px] font-medium leading-tight text-[#2a478d] sm:text-[36px] lg:text-[48px] lg:leading-none [font-family:var(--font-playfair)]">
+            Featured Properties
+          </h2>
+          <p className="mt-3 max-w-2xl text-[15px] text-[#6b6b6b] sm:mt-4 sm:text-[18px] lg:text-[20px] [font-family:var(--font-urbanist)]">
+            No featured listings are available right now. Browse all properties to see what is on the market.
+          </p>
+        </div>
+        <div className="flex justify-center">
+          <Link
+            href="/properties"
+            className="text-base font-medium text-[#2a478d] hover:underline [font-family:var(--font-dm-sans)]"
+          >
+            View All Properties →
+          </Link>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="w-full py-10 sm:py-[60px]">
@@ -95,7 +119,13 @@ function PropertyCard({ property, className = "" }: { property: Property; classN
       className={`overflow-hidden rounded-[14px] bg-white shadow-[0px_3.58px_5.38px_-3.58px_rgba(0,0,0,0.1),0px_8.96px_13.44px_-2.69px_rgba(0,0,0,0.1)] ${className}`}
     >
       <div className="relative h-[180px] w-full sm:h-[210px] lg:h-[229px]">
-        <Image src={property.image} alt={property.title} fill className="object-cover" sizes="(max-width:768px) 80vw, (max-width:1024px) 50vw, 33vw" />
+        <RemoteOrLocalImage
+          src={property.image}
+          alt={property.title}
+          fill
+          className="object-cover"
+          sizes="(max-width:768px) 80vw, (max-width:1024px) 50vw, 33vw"
+        />
         <span className="absolute left-[14px] top-[12px] rounded-full bg-white px-[14px] py-[5px] text-[12.5px] font-medium text-[#2a478d] shadow-[0px_0px_2px_0px_rgba(0,0,0,0.25)] [font-family:var(--font-dm-sans)]">
           {property.type}
         </span>

@@ -1,7 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   PropertyDetailsModal,
   type PropertyDetail,
@@ -14,96 +18,51 @@ import {
 import {
   PropertyFormModal,
   type PropertyFormValues,
-  amenityIdsFromLabels,
 } from "@/components/admin/property-form-modal";
+import {
+  createAdminProperty,
+  deleteAdminProperty,
+  downloadAdminPropertiesCsv,
+  fetchAdminPropertyDetail,
+  uploadAdminPropertyImages,
+  updateAdminProperty,
+} from "@/lib/admin-properties-client";
+import { buildFallbackPropertyFormData } from "@/lib/property-form-dropdowns";
+import { adminQueryKeys } from "@/lib/admin-query-keys";
+import {
+  useAdminPropertyDetailQuery,
+  useAdminPropertyFormDataQuery,
+  useAdminPropertyListQuery,
+} from "@/lib/hooks/use-admin-properties-queries";
+import {
+  detailToFormValues,
+  detailToPropertyDetail,
+  formValuesToWritePayload,
+  listItemToTableRow,
+  type PropertyTableRow,
+} from "@/lib/admin-property-mappers";
+import type { AdminPropertyDetail } from "@/types/admin-property";
 
 type ModeKind = "buy" | "rent";
 
-const properties = [
-  {
-    id: "1",
-    title: "Luxury 5 Bedroom Duplex",
-    agentName: "Sarah Johnson",
-    locationLine1: "Lekki Phase 1",
-    locationLine2: "Lagos",
-    locationDisplay: "Lekki Phase 1, Lagos",
-    type: "Duplex",
-    mode: { kind: "buy" as ModeKind, label: "Buy" },
-    price: "₦250,000,000",
-    tableThumb: "/admin-dashboard/dash-thumb-1-36497e.png",
-    heroImage: "/admin-dashboard/modal-hero.png",
-    bedrooms: 5,
-    bathrooms: 6,
-    area: "450 sqm",
-    parking: 4,
-    description:
-      "A stunning contemporary duplex in the heart of Lekki Phase 1.",
-    amenities: ["Swimming Pool", "Gym", "24/7 Security"] as const,
-    agentTitle: "Senior Property Consultant",
-    agentAvatar: "/admin-dashboard/modal-agent-avatar-56586a.png",
-  },
-  {
-    id: "2",
-    title: "Modern 3 Bedroom Apartment",
-    agentName: "Michael Chen",
-    locationLine1: "Ikoyi",
-    locationLine2: "Lagos",
-    locationDisplay: "GRA, Ikoyi, Lagos",
-    type: "Apartment",
-    mode: { kind: "rent" as ModeKind, label: "Rent" },
-    price: "₦15,000,000",
-    tableThumb: "/admin-dashboard/dash-thumb-2-36497e.png",
-    heroImage: "/admin-dashboard/dash-thumb-2-36497e.png",
-    bedrooms: 3,
-    bathrooms: 4,
-    area: "210 sqm",
-    parking: 2,
-    description:
-      "Bright, modern apartment with skyline views and premium finishes in Ikoyi.",
-    amenities: ["Elevator", "Concierge", "Backup Power"] as const,
-    agentTitle: "Property Advisor",
-    agentAvatar: "/admin-dashboard/modal-agent-avatar-56586a.png",
-  },
-] as const;
-
-function propertyToFormValues(
-  p: (typeof properties)[number],
-): PropertyFormValues {
-  const agentByRow: Record<string, string> = { "1": "a1", "2": "a2" };
-  const rawPrice = p.price.replace(/[₦,\s]/g, "").trim();
-  return {
-    title: p.title,
-    propertyType: p.type,
-    featured: false,
-    description: p.description,
-    agentId: agentByRow[p.id] ?? "",
-    amenityIds: amenityIdsFromLabels([...p.amenities]),
-    price: rawPrice || "0",
-    listingMode: p.mode.kind === "rent" ? "rent" : "buy",
-  };
-}
-
-function toPropertyDetail(
-  p: (typeof properties)[number],
-): PropertyDetail {
-  return {
-    id: p.id,
-    title: p.title,
-    locationDisplay: p.locationDisplay,
-    price: p.price,
-    modeLabel: p.mode.label,
-    modeKind: p.mode.kind,
-    heroImage: p.heroImage,
-    bedrooms: p.bedrooms,
-    bathrooms: p.bathrooms,
-    area: p.area,
-    parking: p.parking,
-    description: p.description,
-    amenities: [...p.amenities],
-    agentName: p.agentName,
-    agentTitle: p.agentTitle,
-    agentAvatar: p.agentAvatar,
-  };
+function Thumb({ src, alt }: { src: string; alt: string }) {
+  if (src.startsWith("http://") || src.startsWith("https://")) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- remote API URLs not in next/image config
+      <img src={src} alt={alt} className="h-12 w-12 rounded-lg object-cover" />
+    );
+  }
+  return (
+    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-[#F3F4F6]">
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        className="object-cover"
+        sizes="48px"
+      />
+    </div>
+  );
 }
 
 function ModeBadge({ mode }: { mode: { kind: ModeKind; label: string } }) {
@@ -121,12 +80,24 @@ function ModeBadge({ mode }: { mode: { kind: ModeKind; label: string } }) {
   );
 }
 
-function StatusActive() {
+const STATUS_STYLES: Record<string, { dot: string; bg: string; text: string }> = {
+  ACTIVE:   { dot: "bg-[#00A63E]",  bg: "bg-[#F0FDF4]",  text: "text-[#00A63E]" },
+  DRAFT:    { dot: "bg-amber-500",  bg: "bg-amber-50",    text: "text-amber-800" },
+  INACTIVE: { dot: "bg-slate-400",  bg: "bg-slate-100",   text: "text-slate-600" },
+  SOLD:     { dot: "bg-red-500",    bg: "bg-red-50",      text: "text-red-700"   },
+  RENTED:   { dot: "bg-sky-500",    bg: "bg-sky-50",      text: "text-sky-800"   },
+  LEASED:   { dot: "bg-violet-500", bg: "bg-violet-50",   text: "text-violet-800"},
+};
+
+const STATUS_FALLBACK = { dot: "bg-[#99A1AF]", bg: "bg-[#F3F4F6]", text: "text-[#4A5565]" };
+
+function StatusBadge({ status, label }: { status: string; label: string }) {
+  const style = STATUS_STYLES[status] ?? STATUS_FALLBACK;
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F0FDF4] py-1 pl-2 pr-2.5">
-      <span className="size-1.5 shrink-0 rounded-full bg-[#00A63E]" aria-hidden />
-      <span className="text-xs font-semibold leading-[1.333] text-[#00A63E]">
-        Active
+    <span className={`inline-flex items-center gap-1.5 rounded-full py-1 pl-2 pr-2.5 ${style.bg}`}>
+      <span className={`size-1.5 shrink-0 rounded-full ${style.dot}`} aria-hidden />
+      <span className={`text-xs font-semibold leading-[1.333] ${style.text}`}>
+        {label}
       </span>
     </span>
   );
@@ -223,61 +194,242 @@ function IconTrash({ className }: { className?: string }) {
   );
 }
 
+const PAGE_SIZE = 12;
+
 export function AdminProperties() {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [listError, setListError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const [viewProperty, setViewProperty] = useState<PropertyDetail | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
-  const [formInitial, setFormInitial] = useState<PropertyFormValues | null>(
+  const [formInitial, setFormInitial] = useState<PropertyFormValues | null>(null);
+  const [editingSlug, setEditingSlug] = useState<string | null>(null);
+  const [editingDetail, setEditingDetail] = useState<AdminPropertyDetail | null>(
     null,
   );
-  const [removedIds, setRemovedIds] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
+  const [actionError, setActionError] = useState<string | null>(null);
+
   const [successVariant, setSuccessVariant] =
     useState<AdminSuccessVariant | null>(null);
-  const [deletePropertyTarget, setDeletePropertyTarget] = useState<
-    (typeof properties)[number] | null
-  >(null);
+  const [deleteTarget, setDeleteTarget] = useState<PropertyTableRow | null>(null);
 
-  const visibleProperties = properties.filter((p) => !removedIds.has(p.id));
-  const selected = properties.find((p) => p.id === selectedId) ?? null;
+  const queryClient = useQueryClient();
 
-  function openView(id: string) {
+  useEffect(() => {
+    const t = window.setTimeout(() => setSearchQuery(searchInput), 350);
+    return () => window.clearTimeout(t);
+  }, [searchInput]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, statusFilter]);
+
+  const listParams = useMemo(() => {
+    const params: Record<string, string> = {
+      page: String(page),
+      page_size: String(PAGE_SIZE),
+    };
+    if (searchQuery.trim()) params.search = searchQuery.trim();
+    if (statusFilter !== "all") params.status = statusFilter;
+    return params;
+  }, [page, searchQuery, statusFilter]);
+
+  const listQuery = useAdminPropertyListQuery(listParams);
+  const listData = listQuery.data ?? null;
+  const rows = useMemo(
+    () => (listData ? listData.results.map(listItemToTableRow) : []),
+    [listData],
+  );
+  const listMeta = listData
+    ? {
+        count: listData.count,
+        total_pages: listData.total_pages,
+        current_page: listData.current_page,
+        page_size: listData.page_size,
+      }
+    : null;
+  const listLoading = listQuery.isLoading || listQuery.isFetching;
+
+  useEffect(() => {
+    if (listQuery.error) {
+      setListError(
+        listQuery.error instanceof Error
+          ? listQuery.error.message
+          : "Failed to load properties",
+      );
+      return;
+    }
+    setListError(null);
+  }, [listQuery.error]);
+
+  useEffect(() => {
+    if (listData && listData.current_page !== page) {
+      setPage(listData.current_page);
+    }
+  }, [listData, page]);
+
+  const formDataQuery = useAdminPropertyFormDataQuery();
+  const propertyFormDropdowns = formDataQuery.data ?? buildFallbackPropertyFormData();
+
+  const editDetailQuery = useAdminPropertyDetailQuery(
+    editingSlug,
+    formOpen && formMode === "edit",
+  );
+
+  useEffect(() => {
+    if (formMode !== "edit" || !formOpen) return;
+    if (!editDetailQuery.data) return;
+    setEditingDetail(editDetailQuery.data);
+    setFormInitial(detailToFormValues(editDetailQuery.data, propertyFormDropdowns));
+  }, [editDetailQuery.data, formMode, formOpen, propertyFormDropdowns]);
+
+  useEffect(() => {
+    if (!formOpen || formMode !== "edit") return;
+    if (!editDetailQuery.error) return;
+    const msg =
+      editDetailQuery.error instanceof Error
+        ? editDetailQuery.error.message
+        : "Failed to load property";
+    setListError(msg);
     setFormOpen(false);
-    setSelectedId(id);
+    setEditingSlug(null);
+    setEditingDetail(null);
+    setFormInitial(null);
+  }, [editDetailQuery.error, formMode, formOpen]);
+
+  const visibleRows = useMemo(() => {
+    if (typeFilter === "all") return rows;
+    const q = typeFilter.toLowerCase();
+    return rows.filter((r) => r.type.toLowerCase().includes(q));
+  }, [rows, typeFilter]);
+
+  const createMutation = useMutation({
+    mutationFn: createAdminProperty,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.properties.root,
+      });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ slug, payload }: { slug: string; payload: Parameters<typeof updateAdminProperty>[1] }) =>
+      updateAdminProperty(slug, payload),
+    onSuccess: async (_, vars) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: adminQueryKeys.properties.root,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: adminQueryKeys.properties.detail(vars.slug),
+        }),
+      ]);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteAdminProperty,
+    onSuccess: async (_, slug) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: adminQueryKeys.properties.root,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: adminQueryKeys.properties.detail(slug),
+        }),
+      ]);
+    },
+  });
+
+  async function openView(slug: string) {
+    setListError(null);
+    try {
+      const d = await fetchAdminPropertyDetail(slug);
+      setViewProperty(detailToPropertyDetail(d, propertyFormDropdowns));
+      setDetailOpen(true);
+    } catch (e) {
+      setListError(e instanceof Error ? e.message : "Failed to load property");
+    }
   }
 
-  function openEdit(row: (typeof properties)[number]) {
-    setSelectedId(null);
+  function openEdit(row: PropertyTableRow) {
+    setListError(null);
+    setActionError(null);
+    setEditingDetail(null);
+    setFormInitial(null);
+    setEditingSlug(row.slug);
     setFormMode("edit");
-    setFormInitial(propertyToFormValues(row));
+    setDetailOpen(false);
+    setViewProperty(null);
     setFormOpen(true);
   }
 
   function openCreate() {
-    setSelectedId(null);
+    setActionError(null);
+    setEditingDetail(null);
+    setEditingSlug(null);
     setFormMode("create");
     setFormInitial(null);
+    setDetailOpen(false);
+    setViewProperty(null);
     setFormOpen(true);
   }
 
-  function confirmDeleteProperty() {
-    const row = deletePropertyTarget;
+  async function confirmDeleteProperty() {
+    const row = deleteTarget;
     if (!row) return;
-    setRemovedIds((prev) => new Set([...prev, row.id]));
-    if (selectedId === row.id) setSelectedId(null);
-    setFormOpen(false);
-    setDeletePropertyTarget(null);
-    setSuccessVariant("property-deleted");
+    setListError(null);
+    try {
+      await deleteMutation.mutateAsync(row.slug);
+      if (viewProperty?.id === row.slug) {
+        setDetailOpen(false);
+        setViewProperty(null);
+      }
+      setDeleteTarget(null);
+      setSuccessVariant("property-deleted");
+    } catch (e) {
+      setListError(e instanceof Error ? e.message : "Delete failed");
+      setDeleteTarget(null);
+    }
   }
+
+  async function handleExportCsv() {
+    setExporting(true);
+    setListError(null);
+    try {
+      await downloadAdminPropertiesCsv();
+    } catch (e) {
+      setListError(e instanceof Error ? e.message : "Export failed");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  const rangeLabel = useMemo(() => {
+    if (!listMeta || listMeta.count === 0) return "No properties";
+    const start = (listMeta.current_page - 1) * listMeta.page_size + 1;
+    const end = Math.min(
+      listMeta.current_page * listMeta.page_size,
+      listMeta.count,
+    );
+    return `Showing ${start}–${end} of ${listMeta.count} properties`;
+  }, [listMeta]);
 
   return (
     <div className="flex flex-col gap-6 px-4 py-8 sm:px-8 [font-family:var(--font-urbanist)]">
       <AdminDeleteConfirmModal
-        open={deletePropertyTarget !== null}
-        kind={deletePropertyTarget !== null ? "property" : null}
-        onCancel={() => setDeletePropertyTarget(null)}
-        onConfirm={confirmDeleteProperty}
+        open={deleteTarget !== null}
+        kind={deleteTarget !== null ? "property" : null}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => void confirmDeleteProperty()}
       />
       <AdminSuccessModal
         open={successVariant !== null}
@@ -285,20 +437,60 @@ export function AdminProperties() {
         onClose={() => setSuccessVariant(null)}
       />
       <PropertyDetailsModal
-        property={selected ? toPropertyDetail(selected) : null}
-        open={selected !== null}
-        onClose={() => setSelectedId(null)}
+        property={viewProperty}
+        open={detailOpen}
+        onClose={() => {
+          setDetailOpen(false);
+          setViewProperty(null);
+        }}
       />
       <PropertyFormModal
         open={formOpen}
         mode={formMode}
         initial={formInitial}
-        onClose={() => setFormOpen(false)}
-        onPublish={() =>
-          setSuccessVariant(
-            formMode === "create" ? "property-listed" : "property-updated",
-          )
-        }
+        dropdowns={propertyFormDropdowns}
+        detailLoading={formMode === "edit" && !formInitial}
+        onClose={() => {
+          setFormOpen(false);
+          setEditingSlug(null);
+          setEditingDetail(null);
+          setFormInitial(null);
+        }}
+        onPublish={async (values) => {
+          setActionError(null);
+          const payload = formValuesToWritePayload(
+            values,
+            formMode === "edit" ? editingDetail : null,
+            propertyFormDropdowns,
+          );
+          if (!payload.agent) {
+            throw new Error("Please assign an agent before publishing.");
+          }
+          try {
+            if (formMode === "create") {
+              const created = await createMutation.mutateAsync(payload);
+              const files = values.images ?? [];
+              if (files.length > 0 && created.slug) {
+                await uploadAdminPropertyImages(created.slug, files);
+              }
+            } else if (editingSlug) {
+              await updateMutation.mutateAsync({ slug: editingSlug, payload });
+              const files = values.images ?? [];
+              if (files.length > 0) {
+                await uploadAdminPropertyImages(editingSlug, files);
+              }
+            }
+            setFormOpen(false);
+            setEditingSlug(null);
+            setEditingDetail(null);
+            setSuccessVariant(
+              formMode === "create" ? "property-listed" : "property-updated",
+            );
+          } catch (e) {
+            setActionError(e instanceof Error ? e.message : "Save failed");
+            throw e;
+          }
+        }}
       />
 
       <div className="flex w-full flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
@@ -313,7 +505,9 @@ export function AdminProperties() {
         <div className="flex shrink-0 flex-wrap items-center gap-3 lg:justify-end">
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold leading-[1.4286] text-[#1A1D24] shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.1),0px_1px_3px_0px_rgba(0,0,0,0.1)] transition-colors hover:bg-gray-50"
+            disabled={exporting || listLoading}
+            onClick={() => void handleExportCsv()}
+            className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold leading-[1.4286] text-[#1A1D24] shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.1),0px_1px_3px_0px_rgba(0,0,0,0.1)] transition-colors hover:bg-gray-50 disabled:opacity-50"
           >
             <Image
               src="/admin-dashboard/props-export-csv.svg"
@@ -322,7 +516,7 @@ export function AdminProperties() {
               height={18}
               className="size-[18px] shrink-0"
             />
-            Export CSV
+            {exporting ? "Exporting…" : "Export CSV"}
           </button>
           <button
             type="button"
@@ -341,6 +535,17 @@ export function AdminProperties() {
         </div>
       </div>
 
+      {listError ? (
+        <p className="text-sm font-semibold text-red-600" role="alert">
+          {listError}
+        </p>
+      ) : null}
+      {actionError ? (
+        <p className="text-sm font-semibold text-red-600" role="alert">
+          {actionError}
+        </p>
+      ) : null}
+
       <div className="flex flex-col gap-4 rounded-2xl border border-[#F3F4F6] bg-white p-4 shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.1),0px_1px_3px_0px_rgba(0,0,0,0.1)] sm:flex-row sm:items-stretch sm:gap-4">
         <div className="relative min-w-0 flex-1">
           <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2">
@@ -358,6 +563,8 @@ export function AdminProperties() {
           <input
             id="props-search"
             type="search"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search by title, location, or agent..."
             className="h-10 w-full rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] py-2 pl-10 pr-4 text-sm font-normal leading-[1.2] text-[#1A1D24] outline-none ring-[#003A8C]/20 placeholder:text-[rgba(26,29,36,0.5)] focus:ring-2"
           />
@@ -365,23 +572,31 @@ export function AdminProperties() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
           <select
             name="status"
-            defaultValue="all"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
             className={`${selectClass} sm:min-w-[148px]`}
             aria-label="Filter by status"
           >
             <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="DRAFT">Draft</option>
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+            <option value="SOLD">Sold</option>
+            <option value="RENTED">Rented</option>
+            <option value="LEASED">Leased</option>
           </select>
           <select
             name="type"
-            defaultValue="all"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
             className={`${selectClass} sm:min-w-[132px]`}
             aria-label="Filter by type"
           >
             <option value="all">All Types</option>
             <option value="duplex">Duplex</option>
             <option value="apartment">Apartment</option>
+            <option value="penthouse">Penthouse</option>
+            <option value="villa">Villa</option>
           </select>
           <button
             type="button"
@@ -449,153 +664,158 @@ export function AdminProperties() {
               </tr>
             </thead>
             <tbody>
-              {visibleProperties.map((row) => (
-                <tr
-                  key={row.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openView(row.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      openView(row.id);
-                    }
-                  }}
-                  className="cursor-pointer border-b border-[#F3F4F6] transition-colors last:border-b-0 hover:bg-gray-50/80"
-                >
-                  <td className="px-6 py-4 align-middle">
-                    <div className="flex max-w-[320px] items-center gap-4">
-                      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-[#F3F4F6]">
-                        <Image
-                          src={row.tableThumb}
-                          alt=""
-                          fill
-                          className="object-cover"
-                          sizes="48px"
-                        />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold leading-[1.4286] text-[#1A1D24]">
-                          {row.title}
-                        </p>
-                        <p className="text-xs font-normal leading-[1.333] text-[#99A1AF]">
-                          Agent: {row.agentName}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 align-middle">
-                    <p className="text-sm font-normal leading-[1.4286] text-[#4A5565]">
-                      {row.locationLine1}
-                    </p>
-                    <p className="text-xs font-normal leading-[1.333] text-[#99A1AF]">
-                      {row.locationLine2}
-                    </p>
-                  </td>
-                  <td className="px-6 py-4 align-middle text-sm font-normal leading-[1.4286] text-[#4A5565]">
-                    {row.type}
-                  </td>
-                  <td className="px-6 py-4 align-middle">
-                    <ModeBadge mode={row.mode} />
-                  </td>
-                  <td className="px-6 py-4 align-middle text-sm font-bold leading-[1.4286] text-[#1A1D24]">
-                    {row.price}
-                  </td>
-                  <td className="px-6 py-4 align-middle">
-                    <StatusActive />
-                  </td>
-                  <td className="px-6 py-4 align-middle">
-                    <div
-                      className="flex justify-end gap-1"
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        type="button"
-                        className="rounded-lg p-2 text-[#99A1AF] transition-colors hover:bg-gray-100 hover:text-[#62748E]"
-                        aria-label={`View details for ${row.title}`}
-                        onClick={() => openView(row.id)}
-                      >
-                        <IconEye className="size-5" />
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-lg p-2 text-[#99A1AF] transition-colors hover:bg-gray-100 hover:text-[#62748E]"
-                        aria-label={`Edit ${row.title}`}
-                        onClick={() => openEdit(row)}
-                      >
-                        <IconPen className="size-5" />
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-lg p-2 text-[#99A1AF] transition-colors hover:bg-red-50 hover:text-[#DC2626]"
-                        aria-label={`Delete ${row.title}`}
-                        onClick={() => setDeletePropertyTarget(row)}
-                      >
-                        <IconTrash className="size-5" />
-                      </button>
-                    </div>
+              {listLoading ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-[#99A1AF]">
+                    Loading properties…
                   </td>
                 </tr>
-              ))}
+              ) : visibleRows.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-[#99A1AF]">
+                    No properties match your filters.
+                  </td>
+                </tr>
+              ) : (
+                visibleRows.map((row) => (
+                  <tr
+                    key={row.slug}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => void openView(row.slug)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        void openView(row.slug);
+                      }
+                    }}
+                    className="cursor-pointer border-b border-[#F3F4F6] transition-colors last:border-b-0 hover:bg-gray-50/80"
+                  >
+                    <td className="px-6 py-4 align-middle">
+                      <div className="flex max-w-[320px] items-center gap-4">
+                        <Thumb src={row.tableThumb} alt="" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold leading-[1.4286] text-[#1A1D24]">
+                            {row.title}
+                          </p>
+                          <p className="text-xs font-normal leading-[1.333] text-[#99A1AF]">
+                            Agent: {row.agentName}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 align-middle">
+                      <p className="text-sm font-normal leading-[1.4286] text-[#4A5565]">
+                        {row.locationLine1}
+                      </p>
+                      <p className="text-xs font-normal leading-[1.333] text-[#99A1AF]">
+                        {row.locationLine2}
+                      </p>
+                    </td>
+                    <td className="px-6 py-4 align-middle text-sm font-normal leading-[1.4286] text-[#4A5565]">
+                      {row.type}
+                    </td>
+                    <td className="px-6 py-4 align-middle">
+                      <ModeBadge mode={row.mode} />
+                    </td>
+                    <td className="px-6 py-4 align-middle text-sm font-bold leading-[1.4286] text-[#1A1D24]">
+                      {row.price}
+                    </td>
+                    <td className="px-6 py-4 align-middle">
+                      <StatusBadge status={row.status} label={row.statusDisplay} />
+                    </td>
+                    <td className="px-6 py-4 align-middle">
+                      <div
+                        className="flex justify-end gap-1"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          className="rounded-lg p-2 text-[#99A1AF] transition-colors hover:bg-gray-100 hover:text-[#62748E]"
+                          aria-label={`View details for ${row.title}`}
+                          onClick={() => void openView(row.slug)}
+                        >
+                          <IconEye className="size-5" />
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-lg p-2 text-[#99A1AF] transition-colors hover:bg-gray-100 hover:text-[#62748E]"
+                          aria-label={`Edit ${row.title}`}
+                          onMouseEnter={() => {
+                            void queryClient.prefetchQuery({
+                              queryKey: adminQueryKeys.properties.detail(row.slug),
+                              queryFn: () => fetchAdminPropertyDetail(row.slug),
+                            });
+                          }}
+                          onFocus={() => {
+                            void queryClient.prefetchQuery({
+                              queryKey: adminQueryKeys.properties.detail(row.slug),
+                              queryFn: () => fetchAdminPropertyDetail(row.slug),
+                            });
+                          }}
+                          onClick={() => openEdit(row)}
+                        >
+                          <IconPen className="size-5" />
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-lg p-2 text-[#99A1AF] transition-colors hover:bg-red-50 hover:text-[#DC2626]"
+                          aria-label={`Delete ${row.title}`}
+                          onClick={() => setDeleteTarget(row)}
+                        >
+                          <IconTrash className="size-5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
         <div className="flex flex-col gap-4 border-t border-[#F3F4F6] px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs font-normal leading-[1.333] text-[#99A1AF]">
-            Showing 1–25 of 143 properties
+            {rangeLabel}
           </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="rounded-lg p-2 opacity-30"
-              disabled
-              aria-label="Previous page"
-            >
-              <Image
-                src="/admin-dashboard/props-page-prev.svg"
-                alt=""
-                width={34}
-                height={34}
-                className="size-[34px]"
-              />
-            </button>
-            <div className="flex items-center gap-1">
+          {listMeta && listMeta.total_pages > 1 ? (
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="flex size-8 items-center justify-center rounded-lg bg-[#003A8C] text-xs font-bold leading-[1.333] text-white"
-                aria-current="page"
+                className="rounded-lg p-2 text-[#99A1AF] transition-colors hover:bg-gray-50 disabled:opacity-30"
+                disabled={page <= 1 || listLoading}
+                aria-label="Previous page"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
               >
-                1
+                <Image
+                  src="/admin-dashboard/props-page-prev.svg"
+                  alt=""
+                  width={34}
+                  height={34}
+                  className="size-[34px]"
+                />
               </button>
+              <span className="px-2 text-xs font-semibold text-[#4A5565]">
+                Page {listMeta.current_page} of {listMeta.total_pages}
+              </span>
               <button
                 type="button"
-                className="flex size-8 items-center justify-center rounded-lg text-xs font-bold leading-[1.333] text-[#99A1AF] transition-colors hover:bg-gray-50"
+                className="rounded-lg p-2 text-[#99A1AF] transition-colors hover:bg-gray-50 disabled:opacity-30"
+                disabled={page >= listMeta.total_pages || listLoading}
+                aria-label="Next page"
+                onClick={() => setPage((p) => p + 1)}
               >
-                2
-              </button>
-              <button
-                type="button"
-                className="flex size-8 items-center justify-center rounded-lg text-xs font-bold leading-[1.333] text-[#99A1AF] transition-colors hover:bg-gray-50"
-              >
-                3
+                <Image
+                  src="/admin-dashboard/props-page-next.svg"
+                  alt=""
+                  width={34}
+                  height={34}
+                  className="size-[34px]"
+                />
               </button>
             </div>
-            <button
-              type="button"
-              className="rounded-lg p-2 text-[#99A1AF] transition-colors hover:bg-gray-50"
-              aria-label="Next page"
-            >
-              <Image
-                src="/admin-dashboard/props-page-next.svg"
-                alt=""
-                width={34}
-                height={34}
-                className="size-[34px]"
-              />
-            </button>
-          </div>
+          ) : null}
         </div>
       </div>
     </div>

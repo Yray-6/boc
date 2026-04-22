@@ -144,43 +144,6 @@ export function IconAgents({ active, className, ...props }: IconProps) {
   );
 }
 
-export function IconMedia({ active, className, ...props }: IconProps) {
-  return (
-    <svg
-      width={20}
-      height={20}
-      viewBox="0 0 20 20"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={`${navTone(active)} ${className ?? ""}`}
-      aria-hidden
-      {...props}
-    >
-      <path
-        d="M15.8333 2.5H4.16667C3.24619 2.5 2.5 3.24619 2.5 4.16667V15.8333C2.5 16.7538 3.24619 17.5 4.16667 17.5H15.8333C16.7538 17.5 17.5 16.7538 17.5 15.8333V4.16667C17.5 3.24619 16.7538 2.5 15.8333 2.5Z"
-        stroke="currentColor"
-        strokeWidth="1.66667"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M7.5 9.16634C8.42048 9.16634 9.16667 8.42015 9.16667 7.49967C9.16667 6.5792 8.42048 5.83301 7.5 5.83301C6.57953 5.83301 5.83334 6.5792 5.83334 7.49967C5.83334 8.42015 6.57953 9.16634 7.5 9.16634Z"
-        stroke="currentColor"
-        strokeWidth="1.66667"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M17.5 12.5001L14.9283 9.92841C14.6158 9.61595 14.1919 9.44043 13.75 9.44043C13.3081 9.44043 12.8842 9.61595 12.5717 9.92841L5 17.5001"
-        stroke="currentColor"
-        strokeWidth="1.66667"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 export function IconSettings({ active, className, ...props }: IconProps) {
   return (
     <svg
@@ -239,6 +202,29 @@ export function IconViewWebsite({ className, ...props }: SVGProps<SVGSVGElement>
       />
       <path
         d="M15 10.8333V15.8333C15 16.2754 14.8244 16.6993 14.5118 17.0118C14.1993 17.3244 13.7754 17.5 13.3333 17.5H4.16667C3.72464 17.5 3.30072 17.3244 2.98816 17.0118C2.67559 16.6993 2.5 16.2754 2.5 15.8333V6.66667C2.5 6.22464 2.67559 5.80072 2.98816 5.48816C3.30072 5.17559 3.72464 5 4.16667 5H9.16667"
+        stroke="currentColor"
+        strokeWidth="1.66667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function IconEnquiries({ active, className, ...props }: IconProps) {
+  return (
+    <svg
+      width={20}
+      height={20}
+      viewBox="0 0 20 20"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={`${navTone(active)} ${className ?? ""}`}
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M17.5 13.3333C17.5 13.7754 17.3244 14.1993 17.0118 14.5118C16.6993 14.8244 16.2754 15 15.8333 15H5.83333L2.5 18.3333V4.16667C2.5 3.72464 2.67559 3.30072 2.98816 2.98816C3.30072 2.67559 3.72464 2.5 4.16667 2.5H15.8333C16.2754 2.5 16.6993 2.67559 17.0118 2.98816C17.3244 3.30072 17.5 3.72464 17.5 4.16667V13.3333Z"
         stroke="currentColor"
         strokeWidth="1.66667"
         strokeLinecap="round"

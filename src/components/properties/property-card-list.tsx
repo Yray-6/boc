@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Property } from "@/data/home";
+import { RemoteOrLocalImage } from "@/components/common/remote-or-local-image";
 
 interface PropertyCardListProps {
   property: Property;
@@ -14,8 +15,13 @@ export function PropertyCardList({ property }: PropertyCardListProps) {
     <div className="flex overflow-hidden rounded-[7.65px] bg-white shadow-[0px_1.91px_2.87px_-1.91px_rgba(0,0,0,0.1),0px_4.78px_7.17px_-1.43px_rgba(0,0,0,0.1)] lg:rounded-[14px] lg:shadow-[0px_3.53px_5.29px_-3.53px_rgba(0,0,0,0.1),0px_8.81px_13.22px_-2.64px_rgba(0,0,0,0.1)]">
       {/* Image */}
       <div className="relative w-[36%] shrink-0 self-stretch lg:w-[34.5%]">
-        <Image src={image} alt={title} fill className="object-cover"
-          sizes="(max-width:768px) 40vw, 340px" />
+        <RemoteOrLocalImage
+          src={image}
+          alt={title}
+          fill
+          className="object-cover"
+          sizes="(max-width:768px) 40vw, 340px"
+        />
         <div className="absolute left-[6px] top-[6px] rounded-full bg-white px-[7px] py-[2.9px] shadow-[0_0_1.07px_0_rgba(0,0,0,0.25)] lg:left-[14px] lg:top-[11px] lg:px-[14px] lg:py-[5px]">
           <span className="text-[10px] font-medium leading-[1.43] text-[#2a478d] lg:text-[12.5px] [font-family:var(--font-dm-sans)]">
             {type}

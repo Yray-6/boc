@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Property } from "@/data/home";
+import { RemoteOrLocalImage } from "@/components/common/remote-or-local-image";
 
 interface PropertyCardBlockProps {
   property: Property;
@@ -8,14 +9,19 @@ interface PropertyCardBlockProps {
 
 /** Grid/block view card — Figma nodes 819:6335 (desktop) + 819:8519 (mobile) */
 export function PropertyCardBlock({ property }: PropertyCardBlockProps) {
-  const { type, featured, title, location, beds, baths, sqm, price, image } = property;
+  const { type, title, location, beds, baths, sqm, price, image } = property;
 
   return (
     <div className="flex flex-col overflow-hidden rounded-[8px] bg-white shadow-[0px_1.91px_2.87px_-1.91px_rgba(0,0,0,0.1),0px_4.78px_7.17px_-1.43px_rgba(0,0,0,0.1)] lg:rounded-[14px] lg:shadow-[0px_3.58px_5.38px_-3.58px_rgba(0,0,0,0.1),0px_8.96px_13.44px_-2.69px_rgba(0,0,0,0.1)]">
       {/* Image */}
       <div className="relative aspect-403/122 w-full lg:aspect-482/229">
-        <Image src={image} alt={title} fill className="object-cover"
-          sizes="(max-width:768px) 100vw, (max-width:1280px) 50vw, 480px" />
+        <RemoteOrLocalImage
+          src={image}
+          alt={title}
+          fill
+          className="object-cover"
+          sizes="(max-width:768px) 100vw, (max-width:1280px) 50vw, 480px"
+        />
         {/* Type badge */}
         <div className="absolute left-[7px] top-[7px] rounded-full bg-white px-[7px] py-[2.9px] shadow-[0_0_1.07px_0_rgba(0,0,0,0.25)] lg:left-[14px] lg:top-[12px] lg:px-[14px] lg:py-[5px]">
           <span className="text-[10px] font-medium leading-[1.43] text-[#2a478d] lg:text-[12.5px] [font-family:var(--font-dm-sans)]">

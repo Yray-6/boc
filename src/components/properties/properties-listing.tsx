@@ -1,12 +1,20 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { PropertiesFilters, FilterState } from "./properties-filters";
+import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  PropertiesFilters,
+  type FilterState,
+  type AmenityOption,
+  DEFAULT_FILTER_STATE,
+} from "./properties-filters";
 import { PropertyCardBlock } from "./property-card-block";
 import { PropertyCardList } from "./property-card-list";
 import type { Property } from "@/data/home";
+import { buildPropertiesListSearchParams, type ListingSortKey } from "@/lib/public-properties-query";
+import { mapPublicListItemToProperty } from "@/lib/public-property-mapper";
+import type { PublicPropertyListItem, PublicPropertyPaginatedResponse } from "@/types/public-property";
 
-type SortKey = "newest" | "oldest" | "price-asc" | "price-desc";
+type SortKey = ListingSortKey;
 type ViewMode = "grid" | "list";
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -16,36 +24,93 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "price-desc", label: "Price: High to Low" },
 ];
 
-function parsePrice(price: string): number {
-  return parseFloat(price.replace(/[^0-9.]/g, "")) || 0;
+function cloneFilters(f: FilterState): FilterState {
+  return { ...f, amenityIds: new Set(f.amenityIds) };
 }
-
-const INITIAL_FILTERS: FilterState = {
-  propertyType: "All Types", location: "", priceMin: "", priceMax: "",
-  bedrooms: "Any", bathrooms: "Any", amenities: new Set(),
-};
 
 interface PropertiesListingProps {
   initialProperties: Property[];
+  initialCount: number;
+  initialTotalPages: number;
+  initialPage: number;
+  pageSize: number;
+  amenityOptions: AmenityOption[];
+  /** Pre-populated filters from URL search params (hero search navigation). */
+  seedFilters?: Partial<Omit<FilterState, "amenityIds">>;
 }
 
-export function PropertiesListing({ initialProperties }: PropertiesListingProps) {
+export function PropertiesListing({
+  initialProperties,
+  initialCount,
+  initialTotalPages,
+  initialPage,
+  pageSize,
+  amenityOptions,
+  seedFilters,
+}: PropertiesListingProps) {
   const [sort, setSort] = useState<SortKey>("newest");
   const [view, setView] = useState<ViewMode>("grid");
-  const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
+  const [filters, setFilters] = useState<FilterState>(() =>
+    cloneFilters({ ...DEFAULT_FILTER_STATE, ...seedFilters }),
+  );
+  const [page, setPage] = useState(initialPage);
+  const [rows, setRows] = useState<Property[]>(initialProperties);
+  const [totalCount, setTotalCount] = useState(initialCount);
+  const [totalPages, setTotalPages] = useState(initialTotalPages);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const filtered = useMemo(() => {
-    let list = [...initialProperties];
-    if (filters.propertyType !== "All Types") list = list.filter((p) => p.type === filters.propertyType.toUpperCase());
-    if (filters.location.trim()) { const loc = filters.location.toLowerCase(); list = list.filter((p) => p.location.toLowerCase().includes(loc)); }
-    if (filters.priceMin) list = list.filter((p) => parsePrice(p.price) >= parseFloat(filters.priceMin));
-    if (filters.priceMax) list = list.filter((p) => parsePrice(p.price) <= parseFloat(filters.priceMax));
-    if (filters.bedrooms !== "Any") list = list.filter((p) => p.beds >= parseInt(filters.bedrooms));
-    if (filters.bathrooms !== "Any") list = list.filter((p) => p.baths >= parseInt(filters.bathrooms));
-    if (sort === "price-asc") list.sort((a, b) => parsePrice(a.price) - parsePrice(b.price));
-    if (sort === "price-desc") list.sort((a, b) => parsePrice(b.price) - parsePrice(a.price));
-    return list;
-  }, [initialProperties, filters, sort]);
+  const skipFetchOnce = useRef(true);
+
+  const load = useCallback(
+    async (f: FilterState, s: SortKey, p: number, signal?: AbortSignal) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const qs = buildPropertiesListSearchParams(f, s, p, pageSize);
+        const res = await fetch(`/api/properties?${qs.toString()}`, { signal });
+        const body = (await res.json()) as PublicPropertyPaginatedResponse | { detail?: string };
+        if (!res.ok) {
+          const msg = typeof (body as { detail?: string }).detail === "string" ? (body as { detail: string }).detail : "Failed to load properties";
+          throw new Error(msg);
+        }
+        const data = body as PublicPropertyPaginatedResponse;
+        const list = Array.isArray(data.results) ? data.results : [];
+        setRows(list.map((item) => mapPublicListItemToProperty(item as PublicPropertyListItem)));
+        setTotalCount(typeof data.count === "number" ? data.count : list.length);
+        setTotalPages(typeof data.total_pages === "number" ? data.total_pages : 1);
+      } catch (e) {
+        if (e instanceof Error && e.name === "AbortError") return;
+        setError(e instanceof Error ? e.message : "Something went wrong");
+        setRows([]);
+        setTotalCount(0);
+        setTotalPages(1);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [pageSize],
+  );
+
+  useEffect(() => {
+    if (skipFetchOnce.current) {
+      skipFetchOnce.current = false;
+      return;
+    }
+    const ctrl = new AbortController();
+    const t = window.setTimeout(() => {
+      void load(filters, sort, page, ctrl.signal);
+    }, 320);
+    return () => {
+      window.clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [filters, sort, page, load]);
+
+  function handleFilterChange(next: FilterState) {
+    setFilters(next);
+    setPage(1);
+  }
 
   const GridIcon = () => (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -69,24 +134,25 @@ export function PropertiesListing({ initialProperties }: PropertiesListingProps)
   return (
     <div className="relative z-10 mx-auto w-full max-w-[1440px] px-4 pb-4 pt-0 sm:px-6 sm:py-6 lg:px-[85px] lg:py-8">
 
-      {/* ── Mobile: compact filter panel above cards ── */}
       <div className="mb-4 lg:hidden">
-        <PropertiesFilters onChange={setFilters} mobile />
+        <PropertiesFilters amenityOptions={amenityOptions} initialFilters={seedFilters} onChange={handleFilterChange} mobile />
       </div>
 
       <div className="flex gap-6 lg:gap-8">
-        {/* ── Desktop: sidebar ── */}
         <div className="hidden lg:block">
-          <PropertiesFilters onChange={setFilters} />
+          <PropertiesFilters amenityOptions={amenityOptions} initialFilters={seedFilters} onChange={handleFilterChange} />
         </div>
 
-        {/* ── Main content ── */}
         <div className="flex flex-1 flex-col gap-4 min-w-0 lg:gap-6">
 
-          {/* Sort + view toggle */}
           <div className="flex items-center justify-between">
             <div className="relative flex items-center">
-              <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}
+              <select
+                value={sort}
+                onChange={(e) => {
+                  setSort(e.target.value as SortKey);
+                  setPage(1);
+                }}
                 className="h-[26px] appearance-none rounded-[4px] border border-[rgba(26,26,26,0.1)] bg-white py-0 pl-[8px] pr-[22px] text-[9px] text-[#1a1a1a] outline-none focus:border-[#2a478d] lg:h-[42px] lg:rounded-[6px] lg:pl-4 lg:pr-8 lg:text-base [font-family:var(--font-dm-sans)]">
                 {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
@@ -121,27 +187,52 @@ export function PropertiesListing({ initialProperties }: PropertiesListingProps)
             </div>
           </div>
 
-          {/* Count */}
           <p className="text-xs text-[rgba(26,26,26,0.5)] lg:text-sm [font-family:var(--font-dm-sans)]">
-            {filtered.length} {filtered.length === 1 ? "property" : "properties"} found
+            {loading ? "Loading…" : `${totalCount} ${totalCount === 1 ? "property" : "properties"} found`}
+            {error ? ` — ${error}` : null}
           </p>
 
-          {/* Cards */}
-          {filtered.length === 0 ? (
+          {rows.length === 0 && !loading ? (
             <div className="flex min-h-[200px] items-center justify-center rounded-[16px] bg-white shadow-sm lg:min-h-[300px]">
-              <p className="text-sm text-[rgba(26,26,26,0.5)] [font-family:var(--font-dm-sans)]">No properties match your filters.</p>
+              <p className="text-sm text-[rgba(26,26,26,0.5)] [font-family:var(--font-dm-sans)]">
+                {error ?? "No properties match your filters."}
+              </p>
             </div>
           ) : (
             <div className={view === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:gap-6" : "flex flex-col gap-[21px]"}>
-              {filtered.map((property, i) =>
+              {rows.map((property) =>
                 view === "grid" ? (
-                  <PropertyCardBlock key={i} property={property} />
+                  <PropertyCardBlock key={property.id} property={property} />
                 ) : (
-                  <PropertyCardList key={i} property={property} />
-                )
+                  <PropertyCardList key={property.id} property={property} />
+                ),
               )}
             </div>
           )}
+
+          {totalPages > 1 ? (
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2 [font-family:var(--font-dm-sans)]">
+              <button
+                type="button"
+                disabled={page <= 1 || loading}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="rounded-md border border-[rgba(26,26,26,0.15)] px-3 py-1.5 text-sm disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <span className="text-sm text-[rgba(26,26,26,0.6)]">
+                Page {page} of {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={page >= totalPages || loading}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                className="rounded-md border border-[rgba(26,26,26,0.15)] px-3 py-1.5 text-sm disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

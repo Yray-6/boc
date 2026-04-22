@@ -2,33 +2,47 @@
 
 import { useState, useRef, useEffect } from "react";
 
-const AMENITIES = [
-  "Swimming Pool", "Gym", "24/7 Security", "Backup Generator",
-  "CCTV", "Fitted Kitchen", "Air Conditioning", "Borehole", "Parking", "Garden",
-] as const;
-
-const PROPERTY_TYPES = ["All Types", "Buy", "Rent", "Lease"] as const;
+const PROPERTY_TYPES = ["All Types", "Buy", "Rent", "Lease", "Short let"] as const;
 const BEDROOM_OPTIONS = ["Any", "1+", "2+", "3+", "4+", "5+"] as const;
 const BATHROOM_OPTIONS = ["Any", "1+", "2+", "3+", "4+"] as const;
 
 export interface FilterState {
   propertyType: string;
+  /** Free-text search (title / keyword). */
   location: string;
+  /** API `state` filter — Nigerian state name e.g. "Lagos". */
+  state: string;
   priceMin: string;
   priceMax: string;
   bedrooms: string;
   bathrooms: string;
-  amenities: Set<string>;
+  /** Amenity IDs for `amenities` query (all selected must match). */
+  amenityIds: Set<number>;
 }
+
+export const DEFAULT_FILTER_STATE: FilterState = {
+  propertyType: "All Types",
+  location: "",
+  state: "",
+  priceMin: "",
+  priceMax: "",
+  bedrooms: "Any",
+  bathrooms: "Any",
+  amenityIds: new Set(),
+};
+
+export type AmenityOption = { id: number; name: string };
 
 /* ── Reusable amenities dropdown ── */
 function AmenitiesDropdown({
+  options,
   selected,
   onToggle,
   compact = false,
 }: {
-  selected: Set<string>;
-  onToggle: (name: string) => void;
+  options: AmenityOption[];
+  selected: Set<number>;
+  onToggle: (id: number) => void;
   compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -42,11 +56,12 @@ function AmenitiesDropdown({
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const label = selected.size === 0
-    ? "Select..."
-    : selected.size === 1
-      ? [...selected][0]
-      : `${selected.size} selected`;
+  const label =
+    selected.size === 0
+      ? "Select..."
+      : selected.size === 1
+        ? options.find((o) => selected.has(o.id))?.name ?? "1 selected"
+        : `${selected.size} selected`;
 
   if (compact) {
     /* Mobile compact version */
@@ -67,15 +82,15 @@ function AmenitiesDropdown({
 
         {open && (
           <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-[160px] overflow-y-auto rounded-[3.3px] border border-[rgba(26,26,26,0.1)] bg-white shadow-md">
-            {AMENITIES.map((name) => (
-              <label key={name} className="flex cursor-pointer items-center gap-[6px] px-[8.8px] py-[5px] hover:bg-[#f5f0e8]">
+            {options.map((o) => (
+              <label key={o.id} className="flex cursor-pointer items-center gap-[6px] px-[8.8px] py-[5px] hover:bg-[#f5f0e8]">
                 <input
                   type="checkbox"
-                  checked={selected.has(name)}
-                  onChange={() => onToggle(name)}
+                  checked={selected.has(o.id)}
+                  onChange={() => onToggle(o.id)}
                   className="h-[9px] w-[9px] shrink-0 cursor-pointer accent-[#2a478d]"
                 />
-                <span className="text-[10px] text-[#1a1a1a] [font-family:var(--font-dm-sans)]">{name}</span>
+                <span className="text-[10px] text-[#1a1a1a] [font-family:var(--font-dm-sans)]">{o.name}</span>
               </label>
             ))}
           </div>
@@ -102,15 +117,15 @@ function AmenitiesDropdown({
 
       {open && (
         <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-[220px] overflow-y-auto rounded-[6px] border border-[rgba(26,26,26,0.1)] bg-white shadow-lg">
-          {AMENITIES.map((name) => (
-            <label key={name} className="flex cursor-pointer items-center gap-3 px-4 py-[10px] hover:bg-[#f5f0e8]">
+          {options.map((o) => (
+            <label key={o.id} className="flex cursor-pointer items-center gap-3 px-4 py-[10px] hover:bg-[#f5f0e8]">
               <input
                 type="checkbox"
-                checked={selected.has(name)}
-                onChange={() => onToggle(name)}
+                checked={selected.has(o.id)}
+                onChange={() => onToggle(o.id)}
                 className="h-4 w-4 shrink-0 cursor-pointer accent-[#2a478d]"
               />
-              <span className="text-sm text-[#1a1a1a] [font-family:var(--font-dm-sans)]">{name}</span>
+              <span className="text-sm text-[#1a1a1a] [font-family:var(--font-dm-sans)]">{o.name}</span>
             </label>
           ))}
         </div>
@@ -127,19 +142,17 @@ const Chevron = ({ size = 16 }: { size?: number }) => (
 );
 
 interface PropertiesFiltersProps {
+  amenityOptions: AmenityOption[];
+  initialFilters?: Partial<Omit<FilterState, "amenityIds">>;
   onChange?: (filters: FilterState) => void;
   mobile?: boolean;
 }
 
-export function PropertiesFilters({ onChange, mobile = false }: PropertiesFiltersProps) {
+export function PropertiesFilters({ amenityOptions, initialFilters, onChange, mobile = false }: PropertiesFiltersProps) {
   const [filters, setFilters] = useState<FilterState>({
-    propertyType: "All Types",
-    location: "",
-    priceMin: "",
-    priceMax: "",
-    bedrooms: "Any",
-    bathrooms: "Any",
-    amenities: new Set(),
+    ...DEFAULT_FILTER_STATE,
+    ...initialFilters,
+    amenityIds: new Set(),
   });
 
   function update(patch: Partial<FilterState>) {
@@ -148,17 +161,14 @@ export function PropertiesFilters({ onChange, mobile = false }: PropertiesFilter
     onChange?.(next);
   }
 
-  function toggleAmenity(name: string) {
-    const next = new Set(filters.amenities);
-    next.has(name) ? next.delete(name) : next.add(name);
-    update({ amenities: next });
+  function toggleAmenity(id: number) {
+    const next = new Set(filters.amenityIds);
+    next.has(id) ? next.delete(id) : next.add(id);
+    update({ amenityIds: next });
   }
 
   function resetAll() {
-    const blank: FilterState = {
-      propertyType: "All Types", location: "", priceMin: "", priceMax: "",
-      bedrooms: "Any", bathrooms: "Any", amenities: new Set(),
-    };
+    const blank: FilterState = { ...DEFAULT_FILTER_STATE, amenityIds: new Set() };
     setFilters(blank);
     onChange?.(blank);
   }
@@ -189,10 +199,17 @@ export function PropertiesFilters({ onChange, mobile = false }: PropertiesFilter
             </div>
           </div>
 
-          {/* Location */}
+          {/* State */}
           <div className="flex flex-col gap-[4.4px]">
-            <label className={labelCls}>Location</label>
-            <input type="text" placeholder="City or Neighborhood" value={filters.location}
+            <label className={labelCls}>State</label>
+            <input type="text" placeholder="e.g. Lagos" value={filters.state}
+              onChange={(e) => update({ state: e.target.value })} className={inputCls} />
+          </div>
+
+          {/* Search keyword */}
+          <div className="flex flex-col gap-[4.4px]">
+            <label className={labelCls}>Search</label>
+            <input type="text" placeholder="Keyword, area…" value={filters.location}
               onChange={(e) => update({ location: e.target.value })} className={inputCls} />
           </div>
 
@@ -232,7 +249,12 @@ export function PropertiesFilters({ onChange, mobile = false }: PropertiesFilter
           {/* Amenities — dropdown */}
           <div className="flex flex-col gap-[4.4px]">
             <label className={labelCls}>Amenities</label>
-            <AmenitiesDropdown selected={filters.amenities} onToggle={toggleAmenity} compact />
+            <AmenitiesDropdown
+              options={amenityOptions}
+              selected={filters.amenityIds}
+              onToggle={toggleAmenity}
+              compact
+            />
           </div>
         </div>
       </div>
@@ -264,10 +286,18 @@ export function PropertiesFilters({ onChange, mobile = false }: PropertiesFilter
           </div>
         </div>
 
-        {/* Location */}
+        {/* State */}
         <div className="flex flex-col gap-2">
-          <label className={desktopLabelCls}>Location</label>
-          <input type="text" placeholder="City or Neighborhood" value={filters.location}
+          <label className={desktopLabelCls}>State</label>
+          <input type="text" placeholder="e.g. Lagos" value={filters.state}
+            onChange={(e) => update({ state: e.target.value })}
+            className="w-full rounded-[6px] border border-[rgba(26,26,26,0.1)] bg-white px-4 py-2 text-base text-[#1a1a1a] placeholder:text-[rgba(26,26,26,0.5)] outline-none focus:border-[#2a478d] [font-family:var(--font-dm-sans)]" />
+        </div>
+
+        {/* Search keyword */}
+        <div className="flex flex-col gap-2">
+          <label className={desktopLabelCls}>Search</label>
+          <input type="text" placeholder="Keyword, neighbourhood…" value={filters.location}
             onChange={(e) => update({ location: e.target.value })}
             className="w-full rounded-[6px] border border-[rgba(26,26,26,0.1)] bg-white px-4 py-2 text-base text-[#1a1a1a] placeholder:text-[rgba(26,26,26,0.5)] outline-none focus:border-[#2a478d] [font-family:var(--font-dm-sans)]" />
         </div>
@@ -308,7 +338,7 @@ export function PropertiesFilters({ onChange, mobile = false }: PropertiesFilter
         {/* Amenities — dropdown */}
         <div className="flex flex-col gap-2">
           <label className={desktopLabelCls}>Amenities</label>
-          <AmenitiesDropdown selected={filters.amenities} onToggle={toggleAmenity} />
+          <AmenitiesDropdown options={amenityOptions} selected={filters.amenityIds} onToggle={toggleAmenity} />
         </div>
       </div>
     </aside>

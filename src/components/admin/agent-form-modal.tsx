@@ -37,23 +37,27 @@ type AgentFormModalProps = {
   open: boolean;
   mode: "create" | "edit";
   initial: AgentFormValues | null;
+  detailLoading?: boolean;
   onClose: () => void;
-  onSave: (values: AgentFormValues) => void;
+  onSave?: (values: AgentFormValues) => void | Promise<void>;
 };
 
 export function AgentFormModal({
   open,
   mode,
   initial,
+  detailLoading = false,
   onClose,
   onSave,
 }: AgentFormModalProps) {
   const formId = useId();
   const [values, setValues] = useState<AgentFormValues>(defaultForm);
+  const [saving, setSaving] = useState(false);
   const { mounted, entered } = useRightDrawerMount(open);
 
   useEffect(() => {
     if (!open) return;
+    if (mode === "edit" && detailLoading && !initial) return;
     setValues(
       initial
         ? {
@@ -63,7 +67,7 @@ export function AgentFormModal({
           }
         : defaultForm,
     );
-  }, [open, initial]);
+  }, [open, initial, mode, detailLoading]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -83,6 +87,10 @@ export function AgentFormModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [mounted, onClose]);
 
+  useEffect(() => {
+    if (!open) setSaving(false);
+  }, [open]);
+
   function toggleSpec(id: string) {
     setValues((v) => {
       const set = new Set(v.specializationKeys);
@@ -98,7 +106,7 @@ export function AgentFormModal({
 
   return (
     <div
-      className="fixed inset-0 z-[110] flex justify-end [font-family:var(--font-urbanist)]"
+      className="fixed inset-0 z-110 flex justify-end [font-family:var(--font-urbanist)]"
       role="dialog"
       aria-modal="true"
       aria-labelledby={`${formId}-title`}
@@ -141,13 +149,27 @@ export function AgentFormModal({
 
         <form
           className="flex min-h-0 flex-1 flex-col"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
-            onSave(values);
-            onClose();
+            if (!onSave) return;
+            setSaving(true);
+            try {
+              await onSave(values);
+              onClose();
+            } catch {
+              /* parent may show error; keep drawer open */
+            } finally {
+              setSaving(false);
+            }
           }}
         >
           <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-8 pb-8">
+            {mode === "edit" && detailLoading ? (
+              <div className="flex h-full min-h-[260px] items-center justify-center rounded-2xl border border-[#F3F4F6] bg-[#F9FAFB] text-sm font-medium text-[#6A7282]">
+                Loading agent details...
+              </div>
+            ) : (
+            <>
             <div className="flex flex-col gap-1">
               <label className={labelClass} htmlFor={`${formId}-name`}>
                 Full Name
@@ -254,22 +276,26 @@ export function AgentFormModal({
                 })}
               </div>
             </div>
+            </>
+            )}
           </div>
 
           <div className="shrink-0 border-t border-[#F3F4F6] px-8 pb-8 pt-6">
             <div className="flex gap-3">
               <button
                 type="button"
+                disabled={saving}
                 onClick={onClose}
-                className="flex flex-1 items-center justify-center rounded-lg border border-[#F3F4F6] bg-white py-3 text-sm font-bold leading-[1.4286] text-[#6A7282] shadow-[0px_0px_2px_0px_rgba(0,0,0,0.25)] transition-colors hover:bg-gray-50"
+                className="flex flex-1 items-center justify-center rounded-lg border border-[#F3F4F6] bg-white py-3 text-sm font-bold leading-[1.4286] text-[#6A7282] shadow-[0px_0px_2px_0px_rgba(0,0,0,0.25)] transition-colors hover:bg-gray-50 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex flex-1 items-center justify-center rounded-lg bg-[#003A8C] py-3 text-sm font-bold leading-[1.4286] text-white transition-colors hover:bg-[#002f73]"
+                disabled={saving}
+                className="flex flex-1 items-center justify-center rounded-lg bg-[#003A8C] py-3 text-sm font-bold leading-[1.4286] text-white transition-colors hover:bg-[#002f73] disabled:opacity-60"
               >
-                Save Agent
+                {saving ? "Saving…" : "Save Agent"}
               </button>
             </div>
           </div>
