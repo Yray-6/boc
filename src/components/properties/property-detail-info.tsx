@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import type { Property } from "@/data/home";
+import { AnimateIn } from "@/components/common/animate-in";
 
 type Tab = "overview" | "features" | "location";
 
@@ -26,27 +27,29 @@ export function PropertyDetailInfo({ property }: { property: Property }) {
   return (
     <div className="flex flex-col">
       {/* Title */}
-      <h1 className="text-[18px] font-medium leading-[1.12] text-[#2a478d] lg:text-[clamp(1.5rem,3vw,1.83rem)] [font-family:var(--font-playfair)]">
-        {property.title}
-      </h1>
+      <AnimateIn animation="fade-up" threshold={0.05}>
+        <h1 className="text-[18px] font-medium leading-[1.12] text-[#2a478d] lg:text-[clamp(1.5rem,3vw,1.83rem)] [font-family:var(--font-playfair)]">
+          {property.title}
+        </h1>
 
-      {/* Location */}
-      <div className="mt-[10px] flex items-start gap-[4px] lg:mt-[18px] lg:gap-[6px]">
-        <svg width="8.39" height="8.39" viewBox="0 0 14 14" fill="none" className="mt-0.5 shrink-0 lg:h-[16px] lg:w-[16px]">
-          <path d="M7 1C4.79 1 3 2.79 3 5c0 3.31 4 8 4 8s4-4.69 4-8c0-2.21-1.79-4-4-4zm0 5.5A1.5 1.5 0 1 1 7 3a1.5 1.5 0 0 1 0 3z" fill="#6b6b6b" />
-        </svg>
-        <span className="text-[10px] leading-normal text-[#6b6b6b] lg:text-[13px] [font-family:var(--font-dm-sans)]">
-          {property.address}
-        </span>
-      </div>
+        {/* Location */}
+        <div className="mt-[10px] flex items-start gap-[4px] lg:mt-[18px] lg:gap-[6px]">
+          <svg width="8.39" height="8.39" viewBox="0 0 14 14" fill="none" className="mt-0.5 shrink-0 lg:h-[16px] lg:w-[16px]">
+            <path d="M7 1C4.79 1 3 2.79 3 5c0 3.31 4 8 4 8s4-4.69 4-8c0-2.21-1.79-4-4-4zm0 5.5A1.5 1.5 0 1 1 7 3a1.5 1.5 0 0 1 0 3z" fill="#6b6b6b" />
+          </svg>
+          <span className="text-[10px] leading-normal text-[#6b6b6b] lg:text-[13px] [font-family:var(--font-dm-sans)]">
+            {property.address}
+          </span>
+        </div>
 
-      {/* Price */}
-      <p className="mt-[10px] text-[15.1px] font-bold leading-[1.11] text-[#2a478d] lg:mt-[22px] lg:text-[clamp(1.5rem,3vw,1.83rem)] font-[Georgia,serif]">
-        {property.price}
-      </p>
+        {/* Price */}
+        <p className="mt-[10px] text-[15.1px] font-bold leading-[1.11] text-[#2a478d] lg:mt-[22px] lg:text-[clamp(1.5rem,3vw,1.83rem)] font-[Georgia,serif]">
+          {property.price}
+        </p>
+      </AnimateIn>
 
-      {/* Stats grid — Figma 819:9277: 4 equal tiles, light blue bg */}
-      <div className="mt-[10px] grid grid-cols-4 gap-[6.71px] lg:mt-[32px] lg:gap-[13px]">
+      {/* Stats grid */}
+      <AnimateIn animation="fade-up" delay={100} threshold={0.05} className="mt-[10px] grid grid-cols-4 gap-[6.71px] lg:mt-[32px] lg:gap-[13px]">
         {stats.map(({ icon, value, label }) => (
           <div
             key={label}
@@ -61,7 +64,7 @@ export function PropertyDetailInfo({ property }: { property: Property }) {
             </span>
           </div>
         ))}
-      </div>
+      </AnimateIn>
 
       {/* Tabs */}
       <div className="mt-8 border-b border-[rgba(26,26,26,0.1)]">

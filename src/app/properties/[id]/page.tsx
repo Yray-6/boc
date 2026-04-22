@@ -6,6 +6,7 @@ import { PropertyContactCard, type PropertyAgent } from "@/components/properties
 import { SimilarProperties } from "@/components/properties/similar-properties";
 import { SiteFooter } from "@/components/home/site-footer";
 import { DetailPageNav } from "@/components/properties/detail-page-nav";
+import { AnimateIn } from "@/components/common/animate-in";
 import { publicGetPropertyDetail } from "@/server/public-properties-api";
 import {
   mapPublicDetailToProperty,
@@ -87,7 +88,7 @@ export default async function PropertyDetailPage({ params }: Props) {
     <main className="min-h-screen bg-white text-[#1a1a1a]">
       <DetailPageNav />
 
-      <div className="mt-0">
+      <AnimateIn animation="fade-up" threshold={0.05}>
         <div className="lg:mx-auto lg:max-w-[1440px] lg:px-[85px]">
           <div className="mt-4 hidden lg:block">
             <Link
@@ -104,7 +105,7 @@ export default async function PropertyDetailPage({ params }: Props) {
             <PropertyImageCarousel images={images} title={property.title} type={property.type} />
           </div>
         </div>
-      </div>
+      </AnimateIn>
 
       <div className="mx-auto max-w-[1440px] px-4 pb-16 sm:px-6 lg:px-[85px]">
         <Link
@@ -121,13 +122,13 @@ export default async function PropertyDetailPage({ params }: Props) {
           <div className="flex-1 min-w-0">
             <PropertyDetailInfo property={property} />
           </div>
-          <div className="w-full shrink-0 lg:w-[380px] xl:w-[420px]">
+          <AnimateIn animation="fade-up" delay={120} threshold={0.05} className="w-full shrink-0 lg:w-[380px] xl:w-[420px]">
             <PropertyContactCard
               agent={agent}
               propertyId={propertyId}
               propertyTitle={property.title}
             />
-          </div>
+          </AnimateIn>
         </div>
 
         <SimilarProperties items={similarItems} />

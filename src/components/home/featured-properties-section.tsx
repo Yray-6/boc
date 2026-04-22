@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRef, useState, useCallback } from "react";
 import type { Property } from "@/data/home";
 import { RemoteOrLocalImage } from "@/components/common/remote-or-local-image";
+import { AnimateIn } from "@/components/common/animate-in";
 
 interface FeaturedPropertiesSectionProps {
   properties: Property[];
@@ -58,17 +59,17 @@ export function FeaturedPropertiesSection({ properties }: FeaturedPropertiesSect
   return (
     <section className="w-full py-10 sm:py-[60px]">
       {/* Header */}
-      <div className="mb-8 flex flex-col items-center px-6 text-center sm:mb-[37px] sm:px-10 lg:px-[76px]">
+      <AnimateIn animation="fade-up" className="mb-8 flex flex-col items-center px-6 text-center sm:mb-[37px] sm:px-10 lg:px-[76px]">
         <h2 className="text-[28px] font-medium leading-tight text-[#2a478d] sm:text-[36px] lg:text-[48px] lg:leading-none [font-family:var(--font-playfair)]">
           Featured Properties
         </h2>
         <p className="mt-3 max-w-2xl text-[15px] text-[#6b6b6b] sm:mt-4 sm:text-[18px] lg:text-[20px] [font-family:var(--font-urbanist)]">
           Handpicked exclusive listings just for you
         </p>
-      </div>
+      </AnimateIn>
 
       {/* ── Mobile/tablet: horizontal carousel ── */}
-      <div className="lg:hidden px-4">
+      <AnimateIn animation="fade-up" delay={100} className="lg:hidden px-4">
         <div
           ref={trackRef}
           onScroll={onScroll}
@@ -92,12 +93,14 @@ export function FeaturedPropertiesSection({ properties }: FeaturedPropertiesSect
             />
           ))}
         </div>
-      </div>
+      </AnimateIn>
 
-      {/* ── Desktop: 3-column grid ── */}
+      {/* ── Desktop: 3-column grid, each card staggered ── */}
       <div className="mx-auto hidden max-w-[1332px] grid-cols-3 gap-[29px] px-[76px] lg:grid">
-        {properties.map((property) => (
-          <PropertyCard key={property.id} property={property} />
+        {properties.map((property, i) => (
+          <AnimateIn key={property.id} animation="fade-up" delay={i * 120}>
+            <PropertyCard property={property} />
+          </AnimateIn>
         ))}
       </div>
 

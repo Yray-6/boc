@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRef, useState, useCallback } from "react";
 import type { Testimonial } from "@/data/home";
+import { AnimateIn } from "@/components/common/animate-in";
 
 interface TestimonialsSectionProps {
   testimonials: Testimonial[];
@@ -36,16 +37,17 @@ export function TestimonialsSection({ testimonials }: TestimonialsSectionProps) 
       <div className="mx-auto flex max-w-[1440px] flex-col gap-8 lg:gap-16">
 
         {/* Header */}
-        <div className="flex flex-col items-center text-center">
+        <AnimateIn animation="fade-up" className="flex flex-col items-center text-center">
           <h2 className="text-[26px] font-medium leading-tight text-[#2a478d] sm:text-[36px] lg:text-[48px] lg:leading-none [font-family:var(--font-playfair)]">
             What Our Clients Say
           </h2>
           <p className="mt-3 max-w-[700px] text-[14px] leading-relaxed text-[#6b6b6b] sm:mt-4 sm:text-base lg:text-lg lg:leading-[1.56] [font-family:var(--font-dm-sans)]">
             Hear from our satisfied clients about their experiences with BOC Real Estate Limited
           </p>
-        </div>
+        </AnimateIn>
 
         {/* Carousel track */}
+        <AnimateIn animation="fade-up" delay={100} className="contents">
         <div
           ref={trackRef}
           onScroll={onScroll}
@@ -106,6 +108,7 @@ export function TestimonialsSection({ testimonials }: TestimonialsSectionProps) 
             </article>
           ))}
         </div>
+        </AnimateIn>
 
         {/* Dot indicators */}
         <div className="flex items-center justify-center gap-2">

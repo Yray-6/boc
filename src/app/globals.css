@@ -16,3 +16,89 @@ body {
   color: var(--foreground);
   font-family: var(--font-dm-sans), Arial, sans-serif;
 }
+
+/* ─── Animation keyframes ──────────────────────────────────────────────────── */
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(32px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+@keyframes fade-down {
+  from { opacity: 0; transform: translateY(-24px); }
+  to   { opacity: 1; transform: translateY(0);     }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1);    }
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-36px); }
+  to   { opacity: 1; transform: translateX(0);     }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(36px); }
+  to   { opacity: 1; transform: translateX(0);    }
+}
+
+/* ─── Utility animation classes ────────────────────────────────────────────── */
+
+.animate-fade-up       { animation: fade-up      0.65s cubic-bezier(0.22,1,0.36,1) both; }
+.animate-fade-down     { animation: fade-down    0.65s cubic-bezier(0.22,1,0.36,1) both; }
+.animate-fade-in       { animation: fade-in      0.55s ease both; }
+.animate-scale-in      { animation: scale-in     0.55s cubic-bezier(0.22,1,0.36,1) both; }
+.animate-slide-left    { animation: slide-in-left  0.65s cubic-bezier(0.22,1,0.36,1) both; }
+.animate-slide-right   { animation: slide-in-right 0.65s cubic-bezier(0.22,1,0.36,1) both; }
+
+/* Delay helpers */
+.delay-100  { animation-delay: 0.10s; }
+.delay-150  { animation-delay: 0.15s; }
+.delay-200  { animation-delay: 0.20s; }
+.delay-300  { animation-delay: 0.30s; }
+.delay-400  { animation-delay: 0.40s; }
+.delay-500  { animation-delay: 0.50s; }
+.delay-600  { animation-delay: 0.60s; }
+.delay-700  { animation-delay: 0.70s; }
+.delay-800  { animation-delay: 0.80s; }
+
+/* Scroll-triggered: hidden before entering viewport */
+.will-animate {
+  opacity: 0;
+  transition: none;
+}
+.will-animate.in-view {
+  opacity: 1; /* base; actual motion applied by animate-* class */
+}
+.will-animate.in-view.animate-fade-up    { animation: fade-up      0.65s cubic-bezier(0.22,1,0.36,1) both; }
+.will-animate.in-view.animate-fade-in    { animation: fade-in      0.55s ease both; }
+.will-animate.in-view.animate-scale-in   { animation: scale-in     0.55s cubic-bezier(0.22,1,0.36,1) both; }
+.will-animate.in-view.animate-slide-left { animation: slide-in-left  0.65s cubic-bezier(0.22,1,0.36,1) both; }
+.will-animate.in-view.animate-slide-right{ animation: slide-in-right 0.65s cubic-bezier(0.22,1,0.36,1) both; }
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-fade-down,
+  .animate-fade-in,
+  .animate-scale-in,
+  .animate-slide-left,
+  .animate-slide-right,
+  .will-animate.in-view.animate-fade-up,
+  .will-animate.in-view.animate-fade-in,
+  .will-animate.in-view.animate-scale-in,
+  .will-animate.in-view.animate-slide-left,
+  .will-animate.in-view.animate-slide-right {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .will-animate { opacity: 1; }
+}

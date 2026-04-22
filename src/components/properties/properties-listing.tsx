@@ -134,16 +134,16 @@ export function PropertiesListing({
   return (
     <div className="relative z-10 mx-auto w-full max-w-[1440px] px-4 pb-4 pt-0 sm:px-6 sm:py-6 lg:px-[85px] lg:py-8">
 
-      <div className="mb-4 lg:hidden">
+      <div className="mb-4 animate-fade-up lg:hidden" style={{ animationDelay: "0.1s" }}>
         <PropertiesFilters amenityOptions={amenityOptions} initialFilters={seedFilters} onChange={handleFilterChange} mobile />
       </div>
 
       <div className="flex gap-6 lg:gap-8">
-        <div className="hidden lg:block">
+        <div className="hidden animate-slide-left lg:block" style={{ animationDelay: "0.1s" }}>
           <PropertiesFilters amenityOptions={amenityOptions} initialFilters={seedFilters} onChange={handleFilterChange} />
         </div>
 
-        <div className="flex flex-1 flex-col gap-4 min-w-0 lg:gap-6">
+        <div className="flex flex-1 flex-col gap-4 min-w-0 animate-fade-up lg:gap-6" style={{ animationDelay: "0.15s" }}>
 
           <div className="flex items-center justify-between">
             <div className="relative flex items-center">
@@ -199,7 +199,9 @@ export function PropertiesListing({
               </p>
             </div>
           ) : (
-            <div className={view === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:gap-6" : "flex flex-col gap-[21px]"}>
+            <div
+              className={`transition-opacity duration-300 ${loading ? "opacity-40 pointer-events-none" : "opacity-100"} ${view === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:gap-6" : "flex flex-col gap-[21px]"}`}
+            >
               {rows.map((property) =>
                 view === "grid" ? (
                   <PropertyCardBlock key={property.id} property={property} />

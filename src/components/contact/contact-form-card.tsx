@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AnimateIn } from "@/components/common/animate-in";
 
 /** Send Us a Message form card — Figma 819:8081 (desktop) + 819:9160 (mobile) */
 export function ContactFormCard() {
@@ -20,6 +21,7 @@ export function ContactFormCard() {
   const labelCls = "block text-xs font-medium text-[#1a1a1a] [font-family:var(--font-dm-sans)] lg:text-base";
 
   return (
+    <AnimateIn animation="fade-up" delay={50} threshold={0.05}>
     <div className="flex flex-col gap-[13.73px] rounded-[9.15px] bg-white px-[18.3px] pt-[18.3px] pb-0 shadow-[0px_2.29px_3.43px_-2.29px_rgba(0,0,0,0.1),0px_5.72px_8.58px_-1.72px_rgba(0,0,0,0.1)] lg:gap-6 lg:rounded-[16px] lg:px-8 lg:pt-8 lg:shadow-[0px_4px_6px_-4px_rgba(0,0,0,0.1),0px_10px_15px_-3px_rgba(0,0,0,0.1)]">
       {/* Title — centered on mobile (Figma), left on desktop */}
       <h2 className="text-center text-sm font-semibold leading-[1.34] text-[#1a1a1a] lg:text-left lg:text-2xl lg:leading-[1.33] [font-family:var(--font-playfair)]">
@@ -91,5 +93,6 @@ export function ContactFormCard() {
         </form>
       )}
     </div>
+    </AnimateIn>
   );
 }
