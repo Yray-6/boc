@@ -16,9 +16,59 @@ function formatLocation(row: Pick<PublicPropertyListItem, "neighborhood" | "city
   return row.address || "";
 }
 
+const PLACEHOLDER_IMAGE = "/assets/figma/property-1.png";
+
+/** Build ordered gallery URLs from featured/list API (primary first, then remaining). */
+export function listItemImageUrls(row: PublicPropertyListItem): string[] {
+  const primary = row.primary_image?.trim() || "";
+  const raw = row.images;
+
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return [primary || PLACEHOLDER_IMAGE];
+  }
+
+  type LooseImg = { image_url?: string; url?: string; order?: number; is_primary?: boolean };
+  const entries: { url: string; order: number; isPrimary: boolean }[] = [];
+
+  for (const item of raw) {
+    if (typeof item === "string") {
+      const u = item.trim();
+      if (u) entries.push({ url: u, order: entries.length, isPrimary: false });
+      continue;
+    }
+    if (item && typeof item === "object") {
+      const o = item as LooseImg;
+      const url = String(o.image_url ?? o.url ?? "").trim();
+      if (!url) continue;
+      entries.push({
+        url,
+        order: typeof o.order === "number" ? o.order : entries.length,
+        isPrimary: Boolean(o.is_primary),
+      });
+    }
+  }
+
+  if (entries.length === 0) {
+    return [primary || PLACEHOLDER_IMAGE];
+  }
+
+  entries.sort((a, b) => a.order - b.order);
+  const primaryFirst = [...entries.filter((e) => e.isPrimary), ...entries.filter((e) => !e.isPrimary)];
+  let urls = primaryFirst.map((e) => e.url);
+  urls = [...new Set(urls)];
+
+  if (primary) {
+    const rest = urls.filter((u) => u !== primary);
+    return [primary, ...rest];
+  }
+
+  return urls.length ? urls : [PLACEHOLDER_IMAGE];
+}
+
 export function mapPublicListItemToProperty(row: PublicPropertyListItem): Property {
   const priceDisplay = row.formatted_price?.trim() || row.price || "";
-  const image = row.primary_image?.trim() || "/assets/figma/property-1.png";
+  const images = listItemImageUrls(row);
+  const image = images[0] ?? PLACEHOLDER_IMAGE;
 
   return {
     id: row.slug,
@@ -34,6 +84,7 @@ export function mapPublicListItemToProperty(row: PublicPropertyListItem): Proper
     parking: Number(row.parking) || 0,
     price: priceDisplay,
     image,
+    images,
     propertyType: row.property_type_name || "—",
     yearBuilt: row.created_at ? new Date(row.created_at).getFullYear() : 0,
     status: row.status_display || String(row.status || ""),
@@ -61,7 +112,7 @@ function normalizeAmenitiesForFeatures(
 function detailImages(detail: AdminPropertyDetail): string[] {
   const list = detail.images;
   if (!Array.isArray(list) || list.length === 0) {
-    return ["/assets/figma/property-1.png"];
+    return [PLACEHOLDER_IMAGE];
   }
   const sorted = [...list].sort((a, b) => {
     const ao = typeof a.order === "number" ? a.order : 0;
@@ -70,7 +121,7 @@ function detailImages(detail: AdminPropertyDetail): string[] {
   });
   const primaryFirst = [...sorted.filter((i) => i.is_primary), ...sorted.filter((i) => !i.is_primary)];
   const urls = primaryFirst.map((i: AdminPropertyImage) => i.image_url).filter(Boolean);
-  return urls.length ? urls : ["/assets/figma/property-1.png"];
+  return urls.length ? urls : [PLACEHOLDER_IMAGE];
 }
 
 export function mapPublicDetailToProperty(detail: AdminPropertyDetail): Property {
@@ -90,7 +141,8 @@ export function mapPublicDetailToProperty(detail: AdminPropertyDetail): Property
     sqm: Number(detail.sqm) || 0,
     parking: Number(detail.parking) || 0,
     price: priceDisplay,
-    image: imgs[0] ?? "/assets/figma/property-1.png",
+    image: imgs[0] ?? PLACEHOLDER_IMAGE,
+    images: imgs,
     propertyType: detail.property_type_name || "—",
     yearBuilt: detail.year_built ?? 0,
     status: detail.status_display || String(detail.status || ""),

@@ -5,6 +5,7 @@ import type {
   PublicPropertyListItem,
   PublicPropertyPaginatedResponse,
 } from "@/types/public-property";
+import type { SiteSettings } from "@/types/site-settings";
 
 function withQuery(path: string, searchParams: URLSearchParams | string): string {
   const qs = typeof searchParams === "string" ? searchParams : searchParams.toString();
@@ -45,4 +46,9 @@ export function publicGetPropertyDetail(slug: string) {
 /** Optional catalog for amenity filter IDs (omit if backend has no public route). */
 export function publicListAmenities() {
   return upstreamGet<AdminAmenity[] | unknown>("/api/v1/amenities/");
+}
+
+/** Public site settings — company name, email, phone, social URLs, logo. */
+export function publicGetSiteSettings() {
+  return upstreamGet<SiteSettings | unknown>("/api/v1/site-settings/");
 }

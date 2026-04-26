@@ -1,20 +1,19 @@
 "use client";
 
 import { AnimateIn } from "@/components/common/animate-in";
+import type { SiteSettings } from "@/types/site-settings";
+
+interface ContactInfoCardProps {
+  settings?: SiteSettings | null;
+}
 
 /** Contact Information card — Figma 819:8013 (desktop) + 819:9192 (mobile) */
-export function ContactInfoCard() {
+export function ContactInfoCard({ settings }: ContactInfoCardProps) {
+  const email   = settings?.primary_email || "info@bocrealestate.com";
+  const phone   = settings?.phone_number  || "+2348012345678";
+  const whatsappHref = `https://wa.me/${phone.replace(/[^0-9]/g, "")}`;
+
   const items = [
-    {
-      icon: (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="lg:h-6 lg:w-6">
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#2A478D" />
-          <circle cx="12" cy="9" r="2.5" fill="white" />
-        </svg>
-      ),
-      label: "Office Address",
-      content: "Plot 15, Admiralty Way, Lekki Phase 1, Lagos, Nigeria",
-    },
     {
       icon: (
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="lg:h-6 lg:w-6">
@@ -22,7 +21,7 @@ export function ContactInfoCard() {
         </svg>
       ),
       label: "Phone",
-      content: "+2348012345678",
+      content: <a href={`tel:${phone.replace(/\s+/g, "")}`} className="hover:underline">{phone}</a>,
     },
     {
       icon: (
@@ -31,18 +30,47 @@ export function ContactInfoCard() {
         </svg>
       ),
       label: "Email",
-      content: "info@bocrealestate.com",
+      content: <a href={`mailto:${email}`} className="break-all hover:underline">{email}</a>,
     },
-    {
+    ...(settings?.instagram ? [{
       icon: (
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="lg:h-6 lg:w-6">
-          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" fill="#2A478D" />
-          <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.534 5.858L0 24l6.323-1.517A11.942 11.942 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.68-.503-5.22-1.38l-.38-.22-3.75.9.93-3.64-.24-.38A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" fill="#2A478D" />
+          <rect x="2" y="2" width="20" height="20" rx="5" stroke="#2A478D" strokeWidth="2" />
+          <circle cx="12" cy="12" r="4.5" stroke="#2A478D" strokeWidth="2" />
+          <circle cx="17.5" cy="6.5" r="1" fill="#2A478D" />
         </svg>
       ),
-      label: "WhatsApp",
-      content: "+2348012345678",
-    },
+      label: "Instagram",
+      content: <a href={settings.instagram!} target="_blank" rel="noopener noreferrer" className="hover:underline break-all">Instagram</a>,
+    }] : []),
+    ...(settings?.facebook ? [{
+      icon: (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="#2A478D" className="lg:h-6 lg:w-6">
+          <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3V2z" />
+        </svg>
+      ),
+      label: "Facebook",
+      content: <a href={settings.facebook!} target="_blank" rel="noopener noreferrer" className="hover:underline break-all">Facebook</a>,
+    }] : []),
+    ...(settings?.twitter ? [{
+      icon: (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="#2A478D" className="lg:h-6 lg:w-6">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+        </svg>
+      ),
+      label: "Twitter / X",
+      content: <a href={settings.twitter!} target="_blank" rel="noopener noreferrer" className="hover:underline break-all">Twitter / X</a>,
+    }] : []),
+    ...(settings?.linkedin ? [{
+      icon: (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="#2A478D" className="lg:h-6 lg:w-6">
+          <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" />
+          <circle cx="4" cy="4" r="2" />
+        </svg>
+      ),
+      label: "LinkedIn",
+      content: <a href={settings.linkedin!} target="_blank" rel="noopener noreferrer" className="hover:underline break-all">LinkedIn</a>,
+    }] : []),
     {
       icon: (
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="lg:h-6 lg:w-6">
@@ -89,7 +117,7 @@ export function ContactInfoCard() {
 
         <div className="mt-[14.38px] border-t border-[rgba(26,26,26,0.1)] pt-[19.77px] pb-[19.17px] lg:mt-8 lg:pb-8 lg:pt-8">
           <a
-            href="https://wa.me/2348012345678"
+            href={whatsappHref}
             target="_blank"
             rel="noopener noreferrer"
             className="flex h-9 w-full items-center justify-center gap-[9.59px] rounded-[3.59px] bg-[#00C950] text-xs font-semibold text-white transition-colors hover:bg-[#00b347] lg:h-14 lg:gap-3 lg:rounded-[6px] lg:text-base [font-family:var(--font-dm-sans)]"

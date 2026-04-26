@@ -14,6 +14,8 @@ export interface Property {
   parking: number;
   price: string;
   image: string;
+  /** Ordered gallery URLs when the API returns multiple images (primary first). */
+  images?: string[];
   propertyType: string;
   yearBuilt: number;
   status: string;

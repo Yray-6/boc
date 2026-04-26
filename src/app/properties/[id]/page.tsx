@@ -7,14 +7,14 @@ import { SimilarProperties } from "@/components/properties/similar-properties";
 import { SiteFooter } from "@/components/home/site-footer";
 import { DetailPageNav } from "@/components/properties/detail-page-nav";
 import { AnimateIn } from "@/components/common/animate-in";
-import { publicGetPropertyDetail } from "@/server/public-properties-api";
+import { publicGetPropertyDetail, publicListProperties } from "@/server/public-properties-api";
 import {
   mapPublicDetailToProperty,
   mapPublicDetailToImageUrls,
   mapPublicListItemToProperty,
 } from "@/lib/public-property-mapper";
 import type { AdminPropertyDetail } from "@/types/admin-property";
-import type { PublicPropertyListItem } from "@/types/public-property";
+import type { PublicPropertyListItem, PublicPropertyPaginatedResponse } from "@/types/public-property";
 
 export const dynamic = "force-dynamic";
 
@@ -62,27 +62,56 @@ export default async function PropertyDetailPage({ params }: Props) {
   const { id: slug } = await params;
   if (!slug) notFound();
 
-  let detailRes;
+  let detailRes:
+    | Awaited<ReturnType<typeof publicGetPropertyDetail>>
+    | undefined;
   try {
     detailRes = await publicGetPropertyDetail(slug);
   } catch {
-    notFound();
+    detailRes = undefined;
   }
 
-  if (!detailRes.ok || !isPropertyDetailPayload(detailRes.data)) {
-    notFound();
+  const detail =
+    detailRes?.ok && isPropertyDetailPayload(detailRes.data)
+      ? detailRes.data
+      : null;
+  let fallbackProperty: ReturnType<typeof mapPublicListItemToProperty> | null = null;
+
+  // Fallback for public mode: some backends can fail detail-by-slug for certain rows.
+  // In that case, resolve the clicked property from the list endpoint by exact slug/id match.
+  if (!detail) {
+    try {
+      const qs = new URLSearchParams({
+        page: "1",
+        page_size: "12",
+        search: slug,
+      });
+      const listRes = await publicListProperties(qs);
+      if (listRes.ok && listRes.data && typeof listRes.data === "object" && "results" in listRes.data) {
+        const pageData = listRes.data as PublicPropertyPaginatedResponse;
+        const rows = Array.isArray(pageData.results) ? (pageData.results as PublicPropertyListItem[]) : [];
+        const match = rows.find((r) => r.slug === slug || String(r.id) === slug) ?? rows[0];
+        if (match) {
+          fallbackProperty = mapPublicListItemToProperty(match);
+        }
+      }
+    } catch {
+      // Fall through to notFound below.
+    }
+    if (!fallbackProperty) notFound();
   }
 
-  const detail = detailRes.data;
-  const propertyId = typeof (detail as { id?: unknown }).id === "number"
-    ? (detail as { id: number }).id
+  const propertyId = detail
+    ? (typeof (detail as { id?: unknown }).id === "number"
+      ? (detail as { id: number }).id
+      : undefined)
     : undefined;
-  const property = mapPublicDetailToProperty(detail);
-  const images = mapPublicDetailToImageUrls(detail);
-  const agent = extractAgent(detail);
+  const property = detail ? mapPublicDetailToProperty(detail) : fallbackProperty!;
+  const images = detail ? mapPublicDetailToImageUrls(detail) : (fallbackProperty!.images ?? [fallbackProperty!.image]);
+  const agent = detail ? extractAgent(detail) : null;
 
   // Use similar_properties embedded in the detail response; fall back to []
-  const similarItems = extractSimilarFromDetail(detail, slug) ?? [];
+  const similarItems = detail ? (extractSimilarFromDetail(detail, slug) ?? []) : [];
 
   return (
     <main className="min-h-screen bg-white text-[#1a1a1a]">

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, type MouseEvent } from "react";
 import type { Property } from "@/data/home";
 import { RemoteOrLocalImage } from "@/components/common/remote-or-local-image";
 import { AnimateIn } from "@/components/common/animate-in";
@@ -117,23 +117,91 @@ export function FeaturedPropertiesSection({ properties }: FeaturedPropertiesSect
 }
 
 function PropertyCard({ property, className = "" }: { property: Property; className?: string }) {
+  const gallery =
+    property.images && property.images.length > 0 ? property.images : [property.image];
+  const [imgIdx, setImgIdx] = useState(0);
+  const n = gallery.length;
+
+  const goPrev = useCallback(
+    (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setImgIdx((i) => (i - 1 + n) % n);
+    },
+    [n],
+  );
+
+  const goNext = useCallback(
+    (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setImgIdx((i) => (i + 1) % n);
+    },
+    [n],
+  );
+
   return (
     <article
       className={`overflow-hidden rounded-[14px] bg-white shadow-[0px_3.58px_5.38px_-3.58px_rgba(0,0,0,0.1),0px_8.96px_13.44px_-2.69px_rgba(0,0,0,0.1)] ${className}`}
     >
       <div className="relative h-[180px] w-full sm:h-[210px] lg:h-[229px]">
         <RemoteOrLocalImage
-          src={property.image}
-          alt={property.title}
+          src={gallery[imgIdx] ?? property.image}
+          alt={`${property.title} — photo ${imgIdx + 1} of ${n}`}
           fill
           className="object-cover"
           sizes="(max-width:768px) 80vw, (max-width:1024px) 50vw, 33vw"
+          priority={imgIdx === 0}
         />
-        <span className="absolute left-[14px] top-[12px] rounded-full bg-white px-[14px] py-[5px] text-[12.5px] font-medium text-[#2a478d] shadow-[0px_0px_2px_0px_rgba(0,0,0,0.25)] [font-family:var(--font-dm-sans)]">
+
+        {n > 1 && (
+          <>
+            <button
+              type="button"
+              aria-label="Previous photo"
+              onClick={goPrev}
+              className="absolute left-1 top-1/2 z-2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#1a1a1a] shadow-sm transition hover:bg-white sm:left-1.5 sm:h-8 sm:w-8"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              aria-label="Next photo"
+              onClick={goNext}
+              className="absolute right-1 top-1/2 z-2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#1a1a1a] shadow-sm transition hover:bg-white sm:right-1.5 sm:h-8 sm:w-8"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <div className="absolute bottom-2 left-1/2 z-2 flex max-w-[calc(100%-24px)] -translate-x-1/2 gap-1 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {gallery.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  aria-label={`Show photo ${i + 1}`}
+                  aria-current={i === imgIdx ? "true" : undefined}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setImgIdx(i);
+                  }}
+                  className={`h-1.5 shrink-0 rounded-full transition-all ${
+                    i === imgIdx ? "w-4 bg-white shadow" : "w-1.5 bg-white/55 hover:bg-white/80"
+                  }`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
+        <span className="pointer-events-none absolute left-[14px] top-[12px] z-3 rounded-full bg-white px-[14px] py-[5px] text-[12.5px] font-medium text-[#2a478d] shadow-[0px_0px_2px_0px_rgba(0,0,0,0.25)] [font-family:var(--font-dm-sans)]">
           {property.type}
         </span>
         {property.featured && (
-          <span className="absolute right-[14px] top-[15px] rounded-full bg-[#1a1a1a] px-[11px] py-[3.5px] text-[10.75px] font-medium text-[#f5f0e8] [font-family:var(--font-dm-sans)]">
+          <span className="pointer-events-none absolute right-[14px] top-[15px] z-3 rounded-full bg-[#1a1a1a] px-[11px] py-[3.5px] text-[10.75px] font-medium text-[#f5f0e8] [font-family:var(--font-dm-sans)]">
             FEATURED
           </span>
         )}

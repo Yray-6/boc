@@ -35,6 +35,18 @@ export type PublicPropertyListItem = {
   sqm: number;
   parking: number;
   primary_image: string;
+  /**
+   * Optional gallery on list/featured responses — same shape as detail `images`, or plain URL strings.
+   */
+  images?: Array<
+    | string
+    | {
+        image_url?: string;
+        url?: string;
+        order?: number;
+        is_primary?: boolean;
+      }
+  >;
   agent_name: string;
   views_count: number;
   created_at: string;

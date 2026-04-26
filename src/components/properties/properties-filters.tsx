@@ -154,11 +154,14 @@ export function PropertiesFilters({ amenityOptions, initialFilters, onChange, mo
     ...initialFilters,
     amenityIds: new Set(),
   });
+  const [locationInput, setLocationInput] = useState(() => initialFilters?.location ?? "");
 
   function update(patch: Partial<FilterState>) {
-    const next = { ...filters, ...patch };
-    setFilters(next);
-    onChange?.(next);
+    setFilters((prev) => {
+      const next = { ...prev, ...patch };
+      onChange?.(next);
+      return next;
+    });
   }
 
   function toggleAmenity(id: number) {
@@ -169,9 +172,18 @@ export function PropertiesFilters({ amenityOptions, initialFilters, onChange, mo
 
   function resetAll() {
     const blank: FilterState = { ...DEFAULT_FILTER_STATE, amenityIds: new Set() };
+    setLocationInput(blank.location);
     setFilters(blank);
     onChange?.(blank);
   }
+
+  useEffect(() => {
+    if (locationInput === filters.location) return;
+    const t = window.setTimeout(() => {
+      update({ location: locationInput });
+    }, 350);
+    return () => window.clearTimeout(t);
+  }, [locationInput, filters.location]);
 
   const selectCls = "w-full appearance-none rounded-[3.3px] border border-[rgba(26,26,26,0.1)] bg-white px-[8.8px] py-[4.4px] text-[10px] text-[#1a1a1a] outline-none focus:border-[#2a478d] [font-family:var(--font-dm-sans)] h-[26px]";
   const inputCls = "w-full rounded-[3.3px] border border-[rgba(26,26,26,0.1)] bg-white px-[8.8px] py-[4.4px] text-[10px] text-[#1a1a1a] placeholder:text-[rgba(26,26,26,0.5)] outline-none focus:border-[#2a478d] [font-family:var(--font-dm-sans)] h-[26px]";
@@ -209,8 +221,8 @@ export function PropertiesFilters({ amenityOptions, initialFilters, onChange, mo
           {/* Search keyword */}
           <div className="flex flex-col gap-[4.4px]">
             <label className={labelCls}>Search</label>
-            <input type="text" placeholder="Keyword, area…" value={filters.location}
-              onChange={(e) => update({ location: e.target.value })} className={inputCls} />
+            <input type="text" placeholder="Keyword, area…" value={locationInput}
+              onChange={(e) => setLocationInput(e.target.value)} className={inputCls} />
           </div>
 
           {/* Price Range */}
@@ -297,8 +309,8 @@ export function PropertiesFilters({ amenityOptions, initialFilters, onChange, mo
         {/* Search keyword */}
         <div className="flex flex-col gap-2">
           <label className={desktopLabelCls}>Search</label>
-          <input type="text" placeholder="Keyword, neighbourhood…" value={filters.location}
-            onChange={(e) => update({ location: e.target.value })}
+          <input type="text" placeholder="Keyword, neighbourhood…" value={locationInput}
+            onChange={(e) => setLocationInput(e.target.value)}
             className="w-full rounded-[6px] border border-[rgba(26,26,26,0.1)] bg-white px-4 py-2 text-base text-[#1a1a1a] placeholder:text-[rgba(26,26,26,0.5)] outline-none focus:border-[#2a478d] [font-family:var(--font-dm-sans)]" />
         </div>
 
