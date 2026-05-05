@@ -6,8 +6,10 @@ import {
   stripPriceSeparators,
 } from "@/lib/price-input-format";
 import type { NormalizedPropertyFormData } from "@/lib/property-form-dropdowns";
+import { mapPublicDetailToVideoSlides } from "@/lib/public-property-mapper";
 import type {
   AdminPropertyDetail,
+  AdminPropertyExistingImage,
   AdminPropertyListItem,
   AdminPropertyWritePayload,
   ListingType,
@@ -276,6 +278,24 @@ export function formValuesToWritePayload(
   };
 }
 
+function existingImagesFromDetail(d: AdminPropertyDetail): AdminPropertyExistingImage[] {
+  const list = d.images;
+  if (!Array.isArray(list) || list.length === 0) return [];
+  const sorted = [...list].sort((a, b) => {
+    const ao = typeof a.order === "number" ? a.order : 0;
+    const bo = typeof b.order === "number" ? b.order : 0;
+    return ao - bo;
+  });
+  const primaryFirst = [...sorted.filter((i) => i.is_primary), ...sorted.filter((i) => !i.is_primary)];
+  return primaryFirst.map((img) => ({
+    id: img.id,
+    image_url: img.image_url,
+    caption: img.caption,
+    is_primary: img.is_primary,
+    order: img.order,
+  }));
+}
+
 export function detailToFormValues(
   d: AdminPropertyDetail,
   dropdowns?: NormalizedPropertyFormData | null,
@@ -320,6 +340,10 @@ export function detailToFormValues(
         ? d.status
         : "DRAFT",
     images: [],
+    existingImages: existingImagesFromDetail(d),
+    videos: [],
+    videoThumbnail: null,
+    videoTitle: "",
     bedrooms: d.bedrooms ?? 0,
     bathrooms: d.bathrooms ?? 0,
     toilets: d.toilets ?? 0,
@@ -372,6 +396,7 @@ export function detailToPropertyDetail(
         ? "rent"
         : "buy",
     heroImage,
+    videos: mapPublicDetailToVideoSlides(d),
     bedrooms: d.bedrooms,
     bathrooms: d.bathrooms,
     area: `${d.sqm ?? 0} sqm`,

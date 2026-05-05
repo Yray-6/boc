@@ -23,8 +23,9 @@ import {
   createAdminProperty,
   deleteAdminProperty,
   downloadAdminPropertiesCsv,
-  fetchAdminPropertyDetail,
+  fetchAdminPropertyDetailMerged,
   uploadAdminPropertyImages,
+  uploadAdminPropertyVideos,
   updateAdminProperty,
 } from "@/lib/admin-properties-client";
 import { buildFallbackPropertyFormData } from "@/lib/property-form-dropdowns";
@@ -352,7 +353,7 @@ export function AdminProperties() {
   async function openView(slug: string) {
     setListError(null);
     try {
-      const d = await fetchAdminPropertyDetail(slug);
+      const d = await fetchAdminPropertyDetailMerged(slug);
       setViewProperty(detailToPropertyDetail(d, propertyFormDropdowns));
       setDetailOpen(true);
     } catch (e) {
@@ -450,6 +451,7 @@ export function AdminProperties() {
         initial={formInitial}
         dropdowns={propertyFormDropdowns}
         detailLoading={formMode === "edit" && !formInitial}
+        editingSlug={editingSlug}
         onClose={() => {
           setFormOpen(false);
           setEditingSlug(null);
@@ -458,6 +460,9 @@ export function AdminProperties() {
         }}
         onPublish={async (values) => {
           setActionError(null);
+          if (formMode === "create" && (values.images?.length ?? 0) === 0) {
+            throw new Error("Add at least one listing image before publishing.");
+          }
           const payload = formValuesToWritePayload(
             values,
             formMode === "edit" ? editingDetail : null,
@@ -473,11 +478,25 @@ export function AdminProperties() {
               if (files.length > 0 && created.slug) {
                 await uploadAdminPropertyImages(created.slug, files);
               }
+              const videos = values.videos ?? [];
+              if (videos.length > 0 && created.slug) {
+                await uploadAdminPropertyVideos(created.slug, videos, {
+                  thumbnail: values.videoThumbnail ?? undefined,
+                  title: values.videoTitle?.trim() || undefined,
+                });
+              }
             } else if (editingSlug) {
               await updateMutation.mutateAsync({ slug: editingSlug, payload });
               const files = values.images ?? [];
               if (files.length > 0) {
                 await uploadAdminPropertyImages(editingSlug, files);
+              }
+              const videos = values.videos ?? [];
+              if (videos.length > 0) {
+                await uploadAdminPropertyVideos(editingSlug, videos, {
+                  thumbnail: values.videoThumbnail ?? undefined,
+                  title: values.videoTitle?.trim() || undefined,
+                });
               }
             }
             setFormOpen(false);
@@ -745,13 +764,13 @@ export function AdminProperties() {
                           onMouseEnter={() => {
                             void queryClient.prefetchQuery({
                               queryKey: adminQueryKeys.properties.detail(row.slug),
-                              queryFn: () => fetchAdminPropertyDetail(row.slug),
+                              queryFn: () => fetchAdminPropertyDetailMerged(row.slug),
                             });
                           }}
                           onFocus={() => {
                             void queryClient.prefetchQuery({
                               queryKey: adminQueryKeys.properties.detail(row.slug),
-                              queryFn: () => fetchAdminPropertyDetail(row.slug),
+                              queryFn: () => fetchAdminPropertyDetailMerged(row.slug),
                             });
                           }}
                           onClick={() => openEdit(row)}

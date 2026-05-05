@@ -4,6 +4,13 @@ import Image from "next/image";
 import { useEffect, useRef } from "react";
 import { useRightDrawerMount } from "@/components/admin/use-right-drawer-mount";
 
+/** Listing video for read-only admin Property Details (URLs from API). */
+export type PropertyDetailVideo = {
+  url: string;
+  poster?: string;
+  title: string;
+};
+
 export type PropertyDetail = {
   id: string;
   title: string;
@@ -12,6 +19,7 @@ export type PropertyDetail = {
   modeLabel: string;
   modeKind: "buy" | "rent";
   heroImage: string;
+  videos: PropertyDetailVideo[];
   bedrooms: number;
   bathrooms: number;
   area: string;
@@ -63,7 +71,7 @@ export function PropertyDetailsModal({
 
   return (
     <div
-      className="fixed inset-0 z-[105] flex justify-end [font-family:var(--font-urbanist)]"
+      className="fixed inset-0 z-[105] flex min-h-0 justify-end [font-family:var(--font-urbanist)]"
       role="dialog"
       aria-modal="true"
       aria-labelledby="property-details-title"
@@ -77,11 +85,11 @@ export function PropertyDetailsModal({
         onClick={onClose}
       />
       <div
-        className={`relative flex h-full w-full max-w-[671px] flex-col border-l border-[#F3F4F6] bg-white shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.25)] transition-transform duration-300 ease-out ${
+        className={`relative flex h-full min-h-0 w-full max-w-[671px] flex-col overflow-hidden border-l border-[#F3F4F6] bg-white shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.25)] transition-transform duration-300 ease-out ${
           entered ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        <header className="flex h-20 shrink-0 items-center justify-between border-b border-[#F3F4F6] bg-white px-6 sm:px-8">
+        <header className="relative z-10 flex h-20 shrink-0 items-center justify-between border-b border-[#F3F4F6] bg-white px-6 sm:px-8">
           <h2
             id="property-details-title"
             className="text-xl font-bold leading-[1.4] text-[#1A1D24]"
@@ -116,6 +124,43 @@ export function PropertyDetailsModal({
                 priority
               />
             </div>
+
+            <section className="flex flex-col gap-3">
+              <h4 className="text-xs font-bold uppercase tracking-widest text-[#99A1AF]">
+                Videos
+              </h4>
+              {displayProperty.videos.length > 0 ? (
+                <div className="flex flex-col gap-4">
+                  {displayProperty.videos.map((v, i) => (
+                    <div
+                      key={`${v.url}-${i}`}
+                      className="overflow-hidden rounded-xl border border-[#F3F4F6] bg-[#0a0a0a]"
+                    >
+                      {v.title ? (
+                        <p className="border-b border-white/10 bg-[#1a1a1a] px-3 py-2 text-sm font-semibold text-white/95">
+                          {v.title}
+                        </p>
+                      ) : null}
+                      <video
+                        src={v.url}
+                        poster={v.poster || undefined}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="aspect-video w-full bg-black object-contain"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="rounded-xl border border-dashed border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm leading-relaxed text-[#62748E]">
+                  No videos yet. Use{" "}
+                  <span className="font-semibold text-[#1A1D24]">Edit property</span> →{" "}
+                  <span className="font-semibold text-[#1A1D24]">Videos (optional)</span> to upload MP4 or WebM,
+                  publish, then open this view again.
+                </p>
+              )}
+            </section>
 
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex min-w-0 flex-col gap-1">

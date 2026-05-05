@@ -3,11 +3,13 @@ import {
   normalizePropertyFormData,
   type NormalizedPropertyFormData,
 } from "@/lib/property-form-dropdowns";
+import { mapPublicDetailToVideoSlides } from "@/lib/public-property-mapper";
 import type {
   AdminPropertyDetail,
   AdminPropertyListResponse,
   AdminPropertyWritePayload,
   AdminPropertyImage,
+  AdminPropertyVideo,
 } from "@/types/admin-property";
 
 const api = axios.create({
@@ -70,6 +72,42 @@ export async function fetchAdminPropertyDetail(
     throw new Error(detailFromUnknown(res.data));
   }
   return res.data as AdminPropertyDetail;
+}
+
+function parseAdminVideoListPayload(data: unknown): AdminPropertyVideo[] {
+  if (Array.isArray(data)) return data as AdminPropertyVideo[];
+  if (data && typeof data === "object") {
+    const o = data as Record<string, unknown>;
+    if (Array.isArray(o.results)) return o.results as AdminPropertyVideo[];
+    if (Array.isArray(o.data)) return o.data as AdminPropertyVideo[];
+  }
+  return [];
+}
+
+/** GET listing videos (used when property detail omits `videos`). */
+export async function listAdminPropertyVideos(slug: string): Promise<AdminPropertyVideo[]> {
+  const res = await api.get<unknown>(
+    `/api/admin/properties/${encodeURIComponent(slug)}/videos`,
+  );
+  if (res.status < 200 || res.status >= 300) {
+    throw new Error(detailFromUnknown(res.data));
+  }
+  return parseAdminVideoListPayload(res.data);
+}
+
+/** Property detail plus videos from `GET …/videos` when detail has none. */
+export async function fetchAdminPropertyDetailMerged(
+  slug: string,
+): Promise<AdminPropertyDetail> {
+  const d = await fetchAdminPropertyDetail(slug);
+  if (mapPublicDetailToVideoSlides(d).length > 0) return d;
+  try {
+    const list = await listAdminPropertyVideos(slug);
+    if (list.length > 0) return { ...d, videos: list };
+  } catch {
+    /* optional upstream route */
+  }
+  return d;
 }
 
 export async function updateAdminProperty(
@@ -159,6 +197,83 @@ export async function deleteAdminPropertyImage(
 ): Promise<void> {
   const res = await api.delete(
     `/api/admin/properties/${encodeURIComponent(slug)}/images/${imageId}`,
+  );
+  if (res.status < 200 || res.status >= 300) {
+    throw new Error(detailFromUnknown(res.data));
+  }
+}
+
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
+const MAX_VIDEOS_PER_PROPERTY = 5;
+const VIDEO_ACCEPT = new Set(["video/mp4", "video/webm"]);
+
+function assertValidVideoFiles(files: File[]) {
+  if (files.length === 0) {
+    throw new Error("Select at least one video file.");
+  }
+  if (files.length > MAX_VIDEOS_PER_PROPERTY) {
+    throw new Error(`You can upload at most ${MAX_VIDEOS_PER_PROPERTY} videos per property.`);
+  }
+  for (const f of files) {
+    if (!VIDEO_ACCEPT.has(f.type)) {
+      throw new Error(`"${f.name}" must be MP4 or WebM.`);
+    }
+    if (f.size > MAX_VIDEO_BYTES) {
+      throw new Error(`"${f.name}" exceeds the 100 MB limit.`);
+    }
+  }
+}
+
+/** Multipart POST: field `videos` (repeat per file), optional `thumbnail`, optional `title`. */
+export async function uploadAdminPropertyVideos(
+  slug: string,
+  files: File[],
+  options?: { thumbnail?: File; title?: string },
+): Promise<AdminPropertyVideo[]> {
+  assertValidVideoFiles(files);
+  const fd = new FormData();
+  for (const f of files) {
+    fd.append("videos", f);
+  }
+  if (options?.thumbnail) {
+    fd.append("thumbnail", options.thumbnail);
+  }
+  if (options?.title?.trim()) {
+    fd.append("title", options.title.trim());
+  }
+  const res = await axios.post<AdminPropertyVideo[] | { detail?: string }>(
+    `/api/admin/properties/${encodeURIComponent(slug)}/videos`,
+    fd,
+    {
+      withCredentials: true,
+      validateStatus: () => true,
+    },
+  );
+  if (res.status < 200 || res.status >= 300) {
+    throw new Error(detailFromUnknown(res.data));
+  }
+  return res.data as AdminPropertyVideo[];
+}
+
+export async function fetchAdminPropertyVideo(
+  slug: string,
+  videoId: number,
+): Promise<AdminPropertyVideo> {
+  const res = await api.get<AdminPropertyVideo | { detail?: string }>(
+    `/api/admin/properties/${encodeURIComponent(slug)}/videos/${videoId}`,
+  );
+  if (res.status < 200 || res.status >= 300) {
+    throw new Error(detailFromUnknown(res.data));
+  }
+  return res.data as AdminPropertyVideo;
+}
+
+export async function deleteAdminPropertyVideo(
+  slug: string,
+  videoId: number,
+): Promise<void> {
+  const res = await api.delete(
+    `/api/admin/properties/${encodeURIComponent(slug)}/videos/${videoId}`,
   );
   if (res.status < 200 || res.status >= 300) {
     throw new Error(detailFromUnknown(res.data));

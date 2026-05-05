@@ -87,6 +87,23 @@ export type AdminPropertyImage = {
   created_at: string;
 };
 
+/** Subset of `AdminPropertyImage` kept in the admin form for saved photos (delete uses `id`). */
+export type AdminPropertyExistingImage = Pick<
+  AdminPropertyImage,
+  "id" | "image_url" | "caption" | "is_primary" | "order"
+>;
+
+/** Property video from `GET/POST …/videos/` admin API. */
+export type AdminPropertyVideo = {
+  id: number;
+  video_url: string;
+  thumbnail_url: string;
+  title: string;
+  is_primary: boolean;
+  order: number;
+  created_at: string;
+};
+
 export type AdminPropertyDetail = {
   id: number;
   slug: string;
@@ -121,6 +138,8 @@ export type AdminPropertyDetail = {
   agent: AdminAgentObject | number | string;
   agent_name?: string;
   images: AdminPropertyImage[];
+  /** Present when API returns listing videos on detail. */
+  videos?: AdminPropertyVideo[];
   image_count: number;
   enquiry_count: number;
   views_count: number;

@@ -10,6 +10,7 @@ import type {
   AdminPropertyListResponse,
   AdminPropertyWritePayload,
   AdminPropertyImage,
+  AdminPropertyVideo,
 } from "@/types/admin-property";
 
 const BASE = "/api/v1/admin/properties";
@@ -103,6 +104,38 @@ export function adminDeletePropertyImage(
   imageId: number,
 ) {
   return upstreamDelete<unknown>(`${BASE}/${enc(slug)}/images/${imageId}/`, {
+    headers: auth(token),
+  });
+}
+
+/** Multipart: `videos` (files), optional `thumbnail`, optional `title`. */
+export function adminUploadPropertyVideos(token: string, slug: string, formData: FormData) {
+  return upstreamPostFormData<AdminPropertyVideo[] | unknown>(
+    `${BASE}/${enc(slug)}/videos/`,
+    formData,
+    { headers: auth(token) },
+  );
+}
+
+/** List property videos when upstream exposes `GET …/videos/` (or without trailing slash). */
+export async function adminListPropertyVideos(token: string, slug: string) {
+  const s = enc(slug);
+  const withSlash = await upstreamGet<unknown>(`${BASE}/${s}/videos/`, {
+    headers: auth(token),
+  });
+  if (withSlash.ok || withSlash.status !== 404) return withSlash;
+  return upstreamGet<unknown>(`${BASE}/${s}/videos`, { headers: auth(token) });
+}
+
+export function adminGetPropertyVideo(token: string, slug: string, videoId: number) {
+  return upstreamGet<AdminPropertyVideo | unknown>(
+    `${BASE}/${enc(slug)}/videos/${videoId}/`,
+    { headers: auth(token) },
+  );
+}
+
+export function adminDeletePropertyVideo(token: string, slug: string, videoId: number) {
+  return upstreamDelete<unknown>(`${BASE}/${enc(slug)}/videos/${videoId}/`, {
     headers: auth(token),
   });
 }

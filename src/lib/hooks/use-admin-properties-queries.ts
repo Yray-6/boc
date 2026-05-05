@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
-  fetchAdminPropertyDetail,
+  fetchAdminPropertyDetailMerged,
   fetchAdminPropertyList,
   fetchPropertyFormData,
 } from "@/lib/admin-properties-client";
@@ -21,7 +21,7 @@ export function useAdminPropertyDetailQuery(
 ) {
   return useQuery({
     queryKey: adminQueryKeys.properties.detail(slug ?? ""),
-    queryFn: () => fetchAdminPropertyDetail(slug ?? ""),
+    queryFn: () => fetchAdminPropertyDetailMerged(slug ?? ""),
     enabled: enabled && !!slug,
   });
 }

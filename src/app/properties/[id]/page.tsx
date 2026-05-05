@@ -1,17 +1,19 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { PropertyImageCarousel } from "@/components/properties/property-image-carousel";
+import { PropertyMediaCarousel } from "@/components/properties/property-media-carousel";
 import { PropertyDetailInfo } from "@/components/properties/property-detail-info";
 import { PropertyContactCard, type PropertyAgent } from "@/components/properties/property-contact-card";
 import { SimilarProperties } from "@/components/properties/similar-properties";
 import { SiteFooter } from "@/components/home/site-footer";
 import { DetailPageNav } from "@/components/properties/detail-page-nav";
 import { AnimateIn } from "@/components/common/animate-in";
-import { publicGetPropertyDetail, publicListProperties } from "@/server/public-properties-api";
+import { publicGetPropertyDetail, publicGetPropertyVideos, publicListProperties } from "@/server/public-properties-api";
 import {
   mapPublicDetailToProperty,
   mapPublicDetailToImageUrls,
+  mapPublicDetailToVideoSlides,
   mapPublicListItemToProperty,
+  normalizeVideoSlidesFromUnknown,
 } from "@/lib/public-property-mapper";
 import type { AdminPropertyDetail } from "@/types/admin-property";
 import type { PublicPropertyListItem, PublicPropertyPaginatedResponse } from "@/types/public-property";
@@ -108,6 +110,17 @@ export default async function PropertyDetailPage({ params }: Props) {
     : undefined;
   const property = detail ? mapPublicDetailToProperty(detail) : fallbackProperty!;
   const images = detail ? mapPublicDetailToImageUrls(detail) : (fallbackProperty!.images ?? [fallbackProperty!.image]);
+  let videoSlides = detail ? mapPublicDetailToVideoSlides(detail) : [];
+  if (detail && videoSlides.length === 0) {
+    try {
+      const vRes = await publicGetPropertyVideos(slug);
+      if (vRes.ok) {
+        videoSlides = normalizeVideoSlidesFromUnknown(vRes.data);
+      }
+    } catch {
+      /* optional public videos route */
+    }
+  }
   const agent = detail ? extractAgent(detail) : null;
 
   // Use similar_properties embedded in the detail response; fall back to []
@@ -131,7 +144,12 @@ export default async function PropertyDetailPage({ params }: Props) {
             </Link>
           </div>
           <div className="mt-4 lg:mt-6">
-            <PropertyImageCarousel images={images} title={property.title} type={property.type} />
+            <PropertyMediaCarousel
+              images={images}
+              videos={videoSlides}
+              title={property.title}
+              type={property.type}
+            />
           </div>
         </div>
       </AnimateIn>

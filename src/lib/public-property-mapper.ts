@@ -154,3 +154,93 @@ export function mapPublicDetailToProperty(detail: AdminPropertyDetail): Property
 export function mapPublicDetailToImageUrls(detail: AdminPropertyDetail): string[] {
   return detailImages(detail);
 }
+
+/** Ordered slides for public property video carousel (primary first). */
+export type PublicPropertyVideoSlide = {
+  url: string;
+  poster: string;
+  title: string;
+};
+
+function firstString(...vals: unknown[]): string {
+  for (const v of vals) {
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return "";
+}
+
+type InternalVideoSlide = PublicPropertyVideoSlide & { _isPrimary: boolean; _order: number };
+
+function slideFromLooseVideoItem(item: unknown): InternalVideoSlide | null {
+  if (!item || typeof item !== "object") return null;
+  const o = item as Record<string, unknown>;
+  const url = firstString(
+    o.video_url,
+    o.videoUrl,
+    o.url,
+    o.src,
+    o.file,
+    o.video,
+    o.file_url,
+    o.fileUrl,
+  );
+  if (!url) return null;
+  const poster = firstString(
+    o.thumbnail_url,
+    o.thumbnailUrl,
+    o.poster,
+    o.thumbnail,
+    o.preview_url,
+    o.previewUrl,
+  );
+  const title = firstString(o.title, o.name, o.caption) || "Video";
+  const isPrimary = Boolean(o.is_primary ?? o.isPrimary);
+  const orderRaw = o.order;
+  const order =
+    typeof orderRaw === "number" && Number.isFinite(orderRaw)
+      ? orderRaw
+      : typeof orderRaw === "string" && orderRaw.trim() !== ""
+        ? Number(orderRaw)
+        : 0;
+  return {
+    url,
+    poster,
+    title,
+    _isPrimary: isPrimary,
+    _order: Number.isFinite(order) ? order : 0,
+  };
+}
+
+/** Normalize `videos` array (or paginated `{ results }`) from API detail or list endpoint. */
+export function normalizeVideoSlidesFromUnknown(raw: unknown): PublicPropertyVideoSlide[] {
+  let list: unknown[] = [];
+  if (Array.isArray(raw)) list = raw;
+  else if (raw && typeof raw === "object") {
+    const o = raw as Record<string, unknown>;
+    if (Array.isArray(o.results)) list = o.results;
+    else if (Array.isArray(o.data)) list = o.data;
+    else if (Array.isArray(o.videos)) list = o.videos;
+  }
+  const slides: InternalVideoSlide[] = [];
+  for (const item of list) {
+    const s = slideFromLooseVideoItem(item);
+    if (s) slides.push(s);
+  }
+  slides.sort((a, b) => a._order - b._order);
+  const primaryFirst = [...slides.filter((s) => s._isPrimary), ...slides.filter((s) => !s._isPrimary)];
+  return primaryFirst.map(({ url, poster, title }) => ({ url, poster, title }));
+}
+
+function rawVideoListFromDetail(detail: AdminPropertyDetail): unknown[] {
+  const r = detail as unknown as Record<string, unknown>;
+  const keys = ["videos", "property_videos", "listing_videos", "propertyVideos", "video_set"];
+  for (const k of keys) {
+    const v = r[k];
+    if (Array.isArray(v) && v.length) return v;
+  }
+  return [];
+}
+
+export function mapPublicDetailToVideoSlides(detail: AdminPropertyDetail): PublicPropertyVideoSlide[] {
+  return normalizeVideoSlidesFromUnknown(rawVideoListFromDetail(detail));
+}

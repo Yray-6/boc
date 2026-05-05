@@ -43,6 +43,14 @@ export function publicGetPropertyDetail(slug: string) {
   );
 }
 
+/** Listing videos when the backend exposes `GET …/properties/{slug}/videos/` (with or without trailing slash). */
+export async function publicGetPropertyVideos(slug: string) {
+  const enc = encodeURIComponent(slug);
+  const withSlash = await upstreamGet<unknown>(`/api/v1/properties/${enc}/videos/`);
+  if (withSlash.ok || withSlash.status !== 404) return withSlash;
+  return upstreamGet<unknown>(`/api/v1/properties/${enc}/videos`);
+}
+
 /** Optional catalog for amenity filter IDs (omit if backend has no public route). */
 export function publicListAmenities() {
   return upstreamGet<AdminAmenity[] | unknown>("/api/v1/amenities/");
