@@ -2,21 +2,10 @@ import { ContactHero } from "@/components/contact/contact-hero";
 import { ContactInfoCard } from "@/components/contact/contact-info-card";
 import { ContactFormCard } from "@/components/contact/contact-form-card";
 import { SiteFooter } from "@/components/home/site-footer";
-import { publicGetSiteSettings } from "@/server/public-properties-api";
-import type { SiteSettings } from "@/types/site-settings";
-
-function isSiteSettings(v: unknown): v is SiteSettings {
-  return !!v && typeof v === "object" && "company_name" in v;
-}
+import { loadPublicSiteSettings } from "@/server/load-public-site-settings";
 
 export default async function ContactPage() {
-  let settings: SiteSettings | null = null;
-  try {
-    const res = await publicGetSiteSettings();
-    if (res.ok && isSiteSettings(res.data)) settings = res.data;
-  } catch {
-    /* use defaults */
-  }
+  const settings = await loadPublicSiteSettings();
 
   return (
     <main className="min-h-screen bg-white text-[#1a1a1a]">

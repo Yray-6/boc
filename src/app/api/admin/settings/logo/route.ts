@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminUploadSiteLogo } from "@/server/admin-settings-api";
+import { revalidatePublicSiteContent } from "@/server/revalidate-public-site";
 import { resolveAdminAccessToken } from "@/server/resolve-admin-access-token";
 
 export async function POST(request: Request) {
@@ -15,6 +16,9 @@ export async function POST(request: Request) {
   }
   try {
     const upstream = await adminUploadSiteLogo(token, formData);
+    if (upstream.status >= 200 && upstream.status < 300) {
+      revalidatePublicSiteContent();
+    }
     return NextResponse.json(upstream.data, { status: upstream.status });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Upstream error";

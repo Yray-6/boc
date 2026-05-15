@@ -13,6 +13,8 @@ export function useAdminSiteSettingsQuery() {
   return useQuery({
     queryKey: adminQueryKeys.settings.site(),
     queryFn: fetchAdminSiteSettings,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 
@@ -21,8 +23,8 @@ export function useAdminSiteSettingsPatchMutation() {
   return useMutation({
     mutationFn: (body: Partial<AdminSiteSettingsWritePayload>) =>
       patchAdminSiteSettings(body),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: adminQueryKeys.settings.site() });
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: adminQueryKeys.settings.site() });
     },
   });
 }
@@ -31,8 +33,8 @@ export function useAdminSiteLogoUploadMutation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (file: File) => uploadAdminSiteLogo(file),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: adminQueryKeys.settings.site() });
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: adminQueryKeys.settings.site() });
     },
   });
 }

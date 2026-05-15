@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { publicGetSiteSettings } from "@/server/public-properties-api";
+import { loadPublicSiteSettings } from "@/server/load-public-site-settings";
 import type { SiteSettings } from "@/types/site-settings";
 
 const quickLinks = [
@@ -11,10 +11,6 @@ const quickLinks = [
 ] as const;
 
 const propertyTypes = ["Apartments", "Duplexes", "Terraces", "Commercial", "Land"] as const;
-
-function isSiteSettings(v: unknown): v is SiteSettings {
-  return !!v && typeof v === "object" && "company_name" in v;
-}
 
 /** Social icon SVGs keyed by platform */
 function InstagramIcon() {
@@ -82,13 +78,7 @@ function FallbackSocials() {
 }
 
 export async function SiteFooter() {
-  let settings: SiteSettings | null = null;
-  try {
-    const res = await publicGetSiteSettings();
-    if (res.ok && isSiteSettings(res.data)) settings = res.data;
-  } catch {
-    /* use fallback values */
-  }
+  const settings = await loadPublicSiteSettings();
 
   const companyName = settings?.company_name || "BOC Real Estate Limited";
   const email       = settings?.primary_email || "info@bocrealestate.com";

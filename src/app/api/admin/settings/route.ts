@@ -4,8 +4,13 @@ import {
   adminPatchSiteSettings,
   adminPutSiteSettings,
 } from "@/server/admin-settings-api";
+import { revalidatePublicSiteContent } from "@/server/revalidate-public-site";
 import { resolveAdminAccessToken } from "@/server/resolve-admin-access-token";
 import type { AdminSiteSettingsWritePayload } from "@/types/admin-settings";
+
+function revalidateIfSaved(status: number) {
+  if (status >= 200 && status < 300) revalidatePublicSiteContent();
+}
 
 export async function GET(request: Request) {
   const token = await resolveAdminAccessToken(request);
@@ -37,6 +42,7 @@ export async function PATCH(request: Request) {
       token,
       body as Partial<AdminSiteSettingsWritePayload>,
     );
+    revalidateIfSaved(upstream.status);
     return NextResponse.json(upstream.data, { status: upstream.status });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Upstream error";
@@ -60,6 +66,7 @@ export async function PUT(request: Request) {
       token,
       body as AdminSiteSettingsWritePayload,
     );
+    revalidateIfSaved(upstream.status);
     return NextResponse.json(upstream.data, { status: upstream.status });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Upstream error";

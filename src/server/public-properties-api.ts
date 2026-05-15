@@ -58,5 +58,10 @@ export function publicListAmenities() {
 
 /** Public site settings — company name, email, phone, social URLs, logo. */
 export function publicGetSiteSettings() {
-  return upstreamGet<SiteSettings | unknown>("/api/v1/site-settings/");
+  return upstreamGet<SiteSettings | unknown>("/api/v1/site-settings/", {
+    headers: {
+      "Cache-Control": "no-cache, no-store",
+      Pragma: "no-cache",
+    },
+  });
 }
