@@ -3,7 +3,10 @@ import {
   normalizePropertyFormData,
   type NormalizedPropertyFormData,
 } from "@/lib/property-form-dropdowns";
-import { mapPublicDetailToVideoSlides } from "@/lib/public-property-mapper";
+import {
+  logAdminVideoUploadClient,
+  summarizeVideoFiles,
+} from "@/lib/admin-video-upload-log";
 import type {
   AdminPropertyDetail,
   AdminPropertyListResponse,
@@ -100,7 +103,7 @@ export async function fetchAdminPropertyDetailMerged(
   slug: string,
 ): Promise<AdminPropertyDetail> {
   const d = await fetchAdminPropertyDetail(slug);
-  if (mapPublicDetailToVideoSlides(d).length > 0) return d;
+  if (Array.isArray(d.videos) && d.videos.length > 0) return d;
   try {
     const list = await listAdminPropertyVideos(slug);
     if (list.length > 0) return { ...d, videos: list };
@@ -241,18 +244,40 @@ export async function uploadAdminPropertyVideos(
   if (options?.title?.trim()) {
     fd.append("title", options.title.trim());
   }
-  const res = await axios.post<AdminPropertyVideo[] | { detail?: string }>(
-    `/api/admin/properties/${encodeURIComponent(slug)}/videos`,
-    fd,
-    {
+  const url = `/api/admin/properties/${encodeURIComponent(slug)}/videos`;
+  logAdminVideoUploadClient("request", {
+    url,
+    slug,
+    files: summarizeVideoFiles(files),
+    title: options?.title?.trim() || null,
+    thumbnail: options?.thumbnail
+      ? { name: options.thumbnail.name, type: options.thumbnail.type, size: options.thumbnail.size }
+      : null,
+  });
+  try {
+    const res = await axios.post<AdminPropertyVideo[] | { detail?: string }>(url, fd, {
       withCredentials: true,
       validateStatus: () => true,
-    },
-  );
-  if (res.status < 200 || res.status >= 300) {
-    throw new Error(detailFromUnknown(res.data));
+    });
+    logAdminVideoUploadClient("response", {
+      url,
+      slug,
+      status: res.status,
+      ok: res.status >= 200 && res.status < 300,
+      data: res.data,
+    });
+    if (res.status < 200 || res.status >= 300) {
+      throw new Error(detailFromUnknown(res.data));
+    }
+    return res.data as AdminPropertyVideo[];
+  } catch (e) {
+    logAdminVideoUploadClient("error", {
+      url,
+      slug,
+      message: e instanceof Error ? e.message : String(e),
+    });
+    throw e;
   }
-  return res.data as AdminPropertyVideo[];
 }
 
 export async function fetchAdminPropertyVideo(

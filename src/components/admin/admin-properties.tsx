@@ -28,6 +28,7 @@ import {
   uploadAdminPropertyVideos,
   updateAdminProperty,
 } from "@/lib/admin-properties-client";
+import { logAdminVideoUploadClient } from "@/lib/admin-video-upload-log";
 import { buildFallbackPropertyFormData } from "@/lib/property-form-dropdowns";
 import { adminQueryKeys } from "@/lib/admin-query-keys";
 import {
@@ -480,6 +481,11 @@ export function AdminProperties() {
               }
               const videos = values.videos ?? [];
               if (videos.length > 0 && created.slug) {
+                logAdminVideoUploadClient("request", {
+                  phase: "publish-create",
+                  slug: created.slug,
+                  videoCount: videos.length,
+                });
                 await uploadAdminPropertyVideos(created.slug, videos, {
                   thumbnail: values.videoThumbnail ?? undefined,
                   title: values.videoTitle?.trim() || undefined,
@@ -493,6 +499,11 @@ export function AdminProperties() {
               }
               const videos = values.videos ?? [];
               if (videos.length > 0) {
+                logAdminVideoUploadClient("request", {
+                  phase: "publish-edit",
+                  slug: editingSlug,
+                  videoCount: videos.length,
+                });
                 await uploadAdminPropertyVideos(editingSlug, videos, {
                   thumbnail: values.videoThumbnail ?? undefined,
                   title: values.videoTitle?.trim() || undefined,

@@ -104,6 +104,12 @@ export type AdminPropertyVideo = {
   created_at: string;
 };
 
+/** Subset of `AdminPropertyVideo` kept in the admin form for saved clips (delete uses `id`). */
+export type AdminPropertyExistingVideo = Pick<
+  AdminPropertyVideo,
+  "id" | "video_url" | "thumbnail_url" | "title" | "is_primary" | "order"
+>;
+
 export type AdminPropertyDetail = {
   id: number;
   slug: string;

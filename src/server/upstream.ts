@@ -3,6 +3,10 @@ import axios, {
   type AxiosRequestConfig,
   type Method,
 } from "axios";
+import {
+  logAdminVideoUploadUpstream,
+  summarizeMultipartFormData,
+} from "@/lib/admin-video-upload-log";
 
 /** Result of calling the backend API (HTTP status is always present; errors do not throw on 4xx/5xx). */
 export type UpstreamResult<T = unknown> = {
@@ -59,12 +63,30 @@ function getClient(): AxiosInstance {
   return client;
 }
 
+function logVideoUpstreamRequest(
+  method: Method,
+  normalizedPath: string,
+  config?: UpstreamRequestConfig,
+) {
+  if (!normalizedPath.includes("/videos")) return;
+  const body = config?.data;
+  logAdminVideoUploadUpstream("request", {
+    method,
+    path: normalizedPath,
+    form:
+      typeof FormData !== "undefined" && body instanceof FormData
+        ? summarizeMultipartFormData(body)
+        : body,
+  });
+}
+
 async function upstreamRequest<T>(
   method: Method,
   path: string,
   config?: UpstreamRequestConfig,
 ): Promise<UpstreamResult<T>> {
   const normalizedPath = normalizePath(path);
+  logVideoUpstreamRequest(method, normalizedPath, config);
   const res = await getClient().request<T>({
     method,
     url: normalizedPath,
@@ -92,6 +114,16 @@ async function upstreamRequest<T>(
     ok: res.status >= 200 && res.status < 300,
     data: safePreview(normalized),
   });
+
+  if (normalizedPath.includes("/videos")) {
+    logAdminVideoUploadUpstream("response", {
+      method,
+      path: normalizedPath,
+      status: res.status,
+      ok: res.status >= 200 && res.status < 300,
+      data: normalized,
+    });
+  }
 
   return {
     ok: res.status >= 200 && res.status < 300,

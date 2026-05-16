@@ -10,6 +10,7 @@ import { mapPublicDetailToVideoSlides } from "@/lib/public-property-mapper";
 import type {
   AdminPropertyDetail,
   AdminPropertyExistingImage,
+  AdminPropertyExistingVideo,
   AdminPropertyListItem,
   AdminPropertyWritePayload,
   ListingType,
@@ -278,6 +279,28 @@ export function formValuesToWritePayload(
   };
 }
 
+function existingVideosFromDetail(d: AdminPropertyDetail): AdminPropertyExistingVideo[] {
+  const list = d.videos;
+  if (!Array.isArray(list) || list.length === 0) return [];
+  const sorted = [...list].sort((a, b) => {
+    const ao = typeof a.order === "number" ? a.order : 0;
+    const bo = typeof b.order === "number" ? b.order : 0;
+    return ao - bo;
+  });
+  const primaryFirst = [
+    ...sorted.filter((v) => v.is_primary),
+    ...sorted.filter((v) => !v.is_primary),
+  ];
+  return primaryFirst.map((v) => ({
+    id: v.id,
+    video_url: v.video_url,
+    thumbnail_url: v.thumbnail_url ?? "",
+    title: v.title ?? "",
+    is_primary: Boolean(v.is_primary),
+    order: typeof v.order === "number" ? v.order : 0,
+  }));
+}
+
 function existingImagesFromDetail(d: AdminPropertyDetail): AdminPropertyExistingImage[] {
   const list = d.images;
   if (!Array.isArray(list) || list.length === 0) return [];
@@ -341,6 +364,7 @@ export function detailToFormValues(
         : "DRAFT",
     images: [],
     existingImages: existingImagesFromDetail(d),
+    existingVideos: existingVideosFromDetail(d),
     videos: [],
     videoThumbnail: null,
     videoTitle: "",

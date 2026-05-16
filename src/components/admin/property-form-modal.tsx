@@ -6,8 +6,16 @@ import { useRightDrawerMount } from "@/components/admin/use-right-drawer-mount";
 import { formatPriceInputForDisplay } from "@/lib/price-input-format";
 import type { NormalizedPropertyFormData } from "@/lib/property-form-dropdowns";
 import { AMENITY_OPTIONS } from "@/lib/property-form-constants";
-import type { AdminPropertyExistingImage, ListingMode, PropertyStatus } from "@/types/admin-property";
-import { deleteAdminPropertyImage } from "@/lib/admin-properties-client";
+import type {
+  AdminPropertyExistingImage,
+  AdminPropertyExistingVideo,
+  ListingMode,
+  PropertyStatus,
+} from "@/types/admin-property";
+import {
+  deleteAdminPropertyImage,
+  deleteAdminPropertyVideo,
+} from "@/lib/admin-properties-client";
 import { RemoteOrLocalImage } from "@/components/common/remote-or-local-image";
 
 export type { ListingMode } from "@/types/admin-property";
@@ -26,6 +34,8 @@ export type PropertyFormValues = {
   images: File[];
   /** Saved listing photos from `GET …/properties/{slug}/` (delete uses `DELETE …/images/{id}/`). */
   existingImages: AdminPropertyExistingImage[];
+  /** Saved listing videos from property detail / `GET …/videos/` (delete uses `DELETE …/videos/{id}/`). */
+  existingVideos: AdminPropertyExistingVideo[];
   /** MP4 / WebM only; max 5 files, 100 MB each (enforced on upload). */
   videos: File[];
   /** Optional custom thumbnail for the multipart video upload. */
@@ -65,6 +75,7 @@ const defaultForm: PropertyFormValues = {
   status: "DRAFT",
   images: [],
   existingImages: [],
+  existingVideos: [],
   videos: [],
   videoThumbnail: null,
   videoTitle: "",
@@ -118,6 +129,8 @@ export function PropertyFormModal({
         patch.images !== undefined ? patch.images : (v.images ?? []),
       existingImages:
         patch.existingImages !== undefined ? patch.existingImages : (v.existingImages ?? []),
+      existingVideos:
+        patch.existingVideos !== undefined ? patch.existingVideos : (v.existingVideos ?? []),
       videos:
         patch.videos !== undefined ? patch.videos : (v.videos ?? []),
       videoThumbnail:
@@ -141,6 +154,9 @@ export function PropertyFormModal({
         images: Array.isArray(initial.images) ? [...initial.images] : [],
         existingImages: Array.isArray(initial.existingImages)
           ? [...initial.existingImages]
+          : [],
+        existingVideos: Array.isArray(initial.existingVideos)
+          ? [...initial.existingVideos]
           : [],
         videos: Array.isArray(initial.videos) ? [...initial.videos] : [],
         videoThumbnail: initial.videoThumbnail ?? null,
@@ -214,10 +230,12 @@ export function PropertyFormModal({
 
   const selectedImages = values.images ?? [];
   const existingServerImages = values.existingImages ?? [];
+  const existingServerVideos = values.existingVideos ?? [];
   const selectedVideos = values.videos ?? [];
   const [dragOver, setDragOver] = useState(false);
   const [videoDragOver, setVideoDragOver] = useState(false);
   const [deletingServerImageId, setDeletingServerImageId] = useState<number | null>(null);
+  const [deletingServerVideoId, setDeletingServerVideoId] = useState<number | null>(null);
   const [mediaMessage, setMediaMessage] = useState<string | null>(null);
 
   function addImageFiles(incoming: File[]) {
@@ -249,9 +267,11 @@ export function PropertyFormModal({
     if (!withinSize.length) return;
     setValues((v) => {
       const existing = v.videos ?? [];
+      const savedCount = v.existingVideos?.length ?? 0;
+      const maxNew = Math.max(0, MAX_VIDEOS - savedCount);
       const names = new Set(existing.map((f) => f.name + f.size));
       const deduped = withinSize.filter((f) => !names.has(f.name + f.size));
-      return { ...v, videos: [...existing, ...deduped].slice(0, MAX_VIDEOS) };
+      return { ...v, videos: [...existing, ...deduped].slice(0, maxNew) };
     });
   }
 
@@ -275,6 +295,7 @@ export function PropertyFormModal({
         amenityIds: [...set],
         images: v.images ?? [],
         existingImages: v.existingImages ?? [],
+        existingVideos: v.existingVideos ?? [],
         videos: v.videos ?? [],
       };
     });
@@ -294,6 +315,23 @@ export function PropertyFormModal({
       setMediaMessage(e instanceof Error ? e.message : "Could not delete image");
     } finally {
       setDeletingServerImageId(null);
+    }
+  }
+
+  async function removeExistingServerVideo(id: number) {
+    if (!editingSlug) return;
+    setDeletingServerVideoId(id);
+    setMediaMessage(null);
+    try {
+      await deleteAdminPropertyVideo(editingSlug, id);
+      setValues((v) => ({
+        ...v,
+        existingVideos: (v.existingVideos ?? []).filter((vid) => vid.id !== id),
+      }));
+    } catch (e) {
+      setMediaMessage(e instanceof Error ? e.message : "Could not delete video");
+    } finally {
+      setDeletingServerVideoId(null);
     }
   }
 
@@ -934,8 +972,70 @@ export function PropertyFormModal({
               <div className="flex flex-col gap-3 border-t border-[#F3F4F6] pt-6">
                 <h4 className="text-base font-bold text-[#1A1D24]">Videos (optional)</h4>
                 <p className="text-sm text-[#99A1AF]">
-                  Up to 5 files — MP4 or WebM only, max 100 MB each. Optional custom thumbnail and title are sent with the upload.
+                  Up to 5 videos per listing — MP4 or WebM only, max 100 MB each. Optional custom thumbnail and title are sent with new uploads.
                 </p>
+
+                {existingServerVideos.length > 0 ? (
+                  <div className="flex flex-col gap-3">
+                    <p className="text-xs font-semibold text-[#6A7282]">
+                      Saved listing videos ({existingServerVideos.length})
+                      <span className="ml-1 font-normal text-[#99A1AF]">
+                        — remove any you no longer want (deleted immediately)
+                      </span>
+                    </p>
+                    <ul className="flex flex-col gap-3">
+                      {existingServerVideos.map((vid) => (
+                        <li
+                          key={vid.id}
+                          className="group relative flex gap-3 overflow-hidden rounded-xl border border-[#F3F4F6] bg-[#F9FAFB] p-3"
+                        >
+                          <div className="relative h-16 w-28 shrink-0 overflow-hidden rounded-lg bg-[#1A1D24]">
+                            {vid.thumbnail_url ? (
+                              <RemoteOrLocalImage
+                                src={vid.thumbnail_url}
+                                alt=""
+                                fill
+                                className="object-cover"
+                                sizes="112px"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-white/70">
+                                Video
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1 py-0.5">
+                            <p className="truncate text-sm font-semibold text-[#1A1D24]">
+                              {vid.title || `Video #${vid.id}`}
+                            </p>
+                            <p className="mt-0.5 truncate text-xs text-[#99A1AF]">{vid.video_url}</p>
+                            {vid.is_primary ? (
+                              <span className="mt-1 inline-block rounded bg-[#003A8C] px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                Primary
+                              </span>
+                            ) : null}
+                          </div>
+                          <button
+                            type="button"
+                            disabled={deletingServerVideoId === vid.id || !editingSlug}
+                            onClick={() => void removeExistingServerVideo(vid.id)}
+                            className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity hover:bg-black/80 disabled:opacity-40 group-hover:opacity-100"
+                            aria-label="Delete saved video"
+                          >
+                            {deletingServerVideoId === vid.id ? (
+                              <span className="size-3 animate-pulse rounded-full bg-white/90" />
+                            ) : (
+                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
+                                <path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                              </svg>
+                            )}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-bold uppercase tracking-wide text-[#99A1AF]" htmlFor={`${formId}-video-title`}>

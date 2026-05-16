@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import {
+  logAdminVideoUploadRoute,
+  summarizeMultipartFormData,
+} from "@/lib/admin-video-upload-log";
+import {
   adminListPropertyVideos,
   adminUploadPropertyVideos,
 } from "@/server/admin-properties-api";
@@ -36,11 +40,23 @@ export async function POST(request: Request, { params }: RouteParams) {
     return NextResponse.json({ detail: "Invalid form data" }, { status: 400 });
   }
 
+  logAdminVideoUploadRoute("request", {
+    slug,
+    form: summarizeMultipartFormData(formData),
+  });
+
   try {
     const upstream = await adminUploadPropertyVideos(token, slug, formData);
+    logAdminVideoUploadRoute("upstream-response", {
+      slug,
+      status: upstream.status,
+      ok: upstream.ok,
+      data: upstream.data,
+    });
     return NextResponse.json(upstream.data, { status: upstream.status });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Upstream error";
+    logAdminVideoUploadRoute("error", { slug, message });
     return NextResponse.json({ detail: message }, { status: 503 });
   }
 }
