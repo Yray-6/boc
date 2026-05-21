@@ -40,12 +40,26 @@ function safeJsonPreview(data: unknown): unknown {
   }
 }
 
-/** Browser: logs before/after POST to `/api/admin/properties/.../videos`. */
+/** Browser: logs before/after direct POST to Django `.../videos/`. */
 export function logAdminVideoUploadClient(
   phase: "request" | "response" | "error",
   payload: Record<string, unknown>,
 ) {
   console.log(`[admin:video-upload] client ${phase}`, payload);
+}
+
+export function summarizeImageFiles(
+  files: File[] | Iterable<File>,
+): { name: string; type: string; size: number }[] {
+  return summarizeVideoFiles(files);
+}
+
+/** Browser: logs before/after direct POST to Django `.../images/`. */
+export function logAdminImageUploadClient(
+  phase: "request" | "response" | "error",
+  payload: Record<string, unknown>,
+) {
+  console.log(`[admin:image-upload] client ${phase}`, payload);
 }
 
 /** Next.js route handler (terminal). */

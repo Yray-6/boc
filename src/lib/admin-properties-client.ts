@@ -4,7 +4,9 @@ import {
   type NormalizedPropertyFormData,
 } from "@/lib/property-form-dropdowns";
 import {
+  logAdminImageUploadClient,
   logAdminVideoUploadClient,
+  summarizeImageFiles,
   summarizeVideoFiles,
 } from "@/lib/admin-video-upload-log";
 import type {
@@ -38,6 +40,85 @@ function detailFromUnknown(data: unknown): string {
     if (typeof d === "string") return d;
   }
   return "Request failed";
+}
+
+type AdminUploadAuth = {
+  apiBaseUrl: string;
+  accessToken: string;
+};
+
+/** Small JSON bridge — used before direct multipart POST to Django (avoids Vercel ~4.5 MB body limit). */
+async function getAdminUploadAuth(): Promise<AdminUploadAuth> {
+  const res = await api.get<AdminUploadAuth | { detail?: string }>("/api/admin/upload-auth");
+  if (res.status < 200 || res.status >= 300) {
+    throw new Error(detailFromUnknown(res.data));
+  }
+  const body = res.data as AdminUploadAuth;
+  if (!body?.apiBaseUrl || !body?.accessToken) {
+    throw new Error("Upload auth response is missing apiBaseUrl or accessToken.");
+  }
+  return {
+    apiBaseUrl: body.apiBaseUrl.replace(/\/+$/, ""),
+    accessToken: body.accessToken,
+  };
+}
+
+/** POST multipart directly to `{apiBaseUrl}{apiPath}` with Bearer auth (cross-origin). */
+async function directMultipartPost<T>(
+  apiPath: string,
+  formData: FormData,
+  auth: AdminUploadAuth,
+): Promise<{ status: number; data: T }> {
+  const path = apiPath.startsWith("/") ? apiPath : `/${apiPath}`;
+  const url = `${auth.apiBaseUrl}${path}`;
+  const res = await axios.post<T | { detail?: string }>(url, formData, {
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${auth.accessToken}`,
+    },
+    validateStatus: () => true,
+  });
+  return { status: res.status, data: res.data as T };
+}
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGES_PER_PROPERTY = 20;
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
+const MAX_VIDEOS_PER_PROPERTY = 5;
+const VIDEO_ACCEPT = new Set(["video/mp4", "video/webm"]);
+
+function assertValidImageFiles(files: File[]) {
+  if (files.length === 0) {
+    throw new Error("Select at least one image file.");
+  }
+  if (files.length > MAX_IMAGES_PER_PROPERTY) {
+    throw new Error(`You can upload at most ${MAX_IMAGES_PER_PROPERTY} images per property.`);
+  }
+  for (const f of files) {
+    if (!f.type.startsWith("image/")) {
+      throw new Error(`"${f.name}" must be an image file.`);
+    }
+    if (f.size > MAX_IMAGE_BYTES) {
+      throw new Error(`"${f.name}" exceeds the 5 MB limit.`);
+    }
+  }
+}
+
+function assertValidVideoFiles(files: File[]) {
+  if (files.length === 0) {
+    throw new Error("Select at least one video file.");
+  }
+  if (files.length > MAX_VIDEOS_PER_PROPERTY) {
+    throw new Error(`You can upload at most ${MAX_VIDEOS_PER_PROPERTY} videos per property.`);
+  }
+  for (const f of files) {
+    if (!VIDEO_ACCEPT.has(f.type)) {
+      throw new Error(`"${f.name}" must be MP4 or WebM.`);
+    }
+    if (f.size > MAX_VIDEO_BYTES) {
+      throw new Error(`"${f.name}" exceeds the 100 MB limit.`);
+    }
+  }
 }
 
 export async function fetchAdminPropertyList(
@@ -163,22 +244,46 @@ export async function uploadAdminPropertyImages(
   files: File[],
   fieldName = "images",
 ): Promise<AdminPropertyImage[]> {
+  assertValidImageFiles(files);
   const fd = new FormData();
   for (const f of files) {
     fd.append(fieldName, f);
   }
-  const res = await axios.post<AdminPropertyImage[] | { detail?: string }>(
-    `/api/admin/properties/${encodeURIComponent(slug)}/images`,
-    fd,
-    {
-      withCredentials: true,
-      validateStatus: () => true,
-    },
-  );
-  if (res.status < 200 || res.status >= 300) {
-    throw new Error(detailFromUnknown(res.data));
+  const apiPath = `/api/v1/admin/properties/${encodeURIComponent(slug)}/images/`;
+  logAdminImageUploadClient("request", {
+    mode: "direct",
+    apiPath,
+    slug,
+    files: summarizeImageFiles(files),
+  });
+  try {
+    const auth = await getAdminUploadAuth();
+    const { status, data } = await directMultipartPost<AdminPropertyImage[]>(
+      apiPath,
+      fd,
+      auth,
+    );
+    logAdminImageUploadClient("response", {
+      mode: "direct",
+      url: `${auth.apiBaseUrl}${apiPath}`,
+      slug,
+      status,
+      ok: status >= 200 && status < 300,
+      data,
+    });
+    if (status < 200 || status >= 300) {
+      throw new Error(detailFromUnknown(data));
+    }
+    return data;
+  } catch (e) {
+    logAdminImageUploadClient("error", {
+      mode: "direct",
+      apiPath,
+      slug,
+      message: e instanceof Error ? e.message : String(e),
+    });
+    throw e;
   }
-  return res.data as AdminPropertyImage[];
 }
 
 export async function fetchAdminPropertyImage(
@@ -206,27 +311,6 @@ export async function deleteAdminPropertyImage(
   }
 }
 
-const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
-const MAX_VIDEOS_PER_PROPERTY = 5;
-const VIDEO_ACCEPT = new Set(["video/mp4", "video/webm"]);
-
-function assertValidVideoFiles(files: File[]) {
-  if (files.length === 0) {
-    throw new Error("Select at least one video file.");
-  }
-  if (files.length > MAX_VIDEOS_PER_PROPERTY) {
-    throw new Error(`You can upload at most ${MAX_VIDEOS_PER_PROPERTY} videos per property.`);
-  }
-  for (const f of files) {
-    if (!VIDEO_ACCEPT.has(f.type)) {
-      throw new Error(`"${f.name}" must be MP4 or WebM.`);
-    }
-    if (f.size > MAX_VIDEO_BYTES) {
-      throw new Error(`"${f.name}" exceeds the 100 MB limit.`);
-    }
-  }
-}
-
 /** Multipart POST: field `videos` (repeat per file), optional `thumbnail`, optional `title`. */
 export async function uploadAdminPropertyVideos(
   slug: string,
@@ -244,9 +328,10 @@ export async function uploadAdminPropertyVideos(
   if (options?.title?.trim()) {
     fd.append("title", options.title.trim());
   }
-  const url = `/api/admin/properties/${encodeURIComponent(slug)}/videos`;
+  const apiPath = `/api/v1/admin/properties/${encodeURIComponent(slug)}/videos/`;
   logAdminVideoUploadClient("request", {
-    url,
+    mode: "direct",
+    apiPath,
     slug,
     files: summarizeVideoFiles(files),
     title: options?.title?.trim() || null,
@@ -255,24 +340,28 @@ export async function uploadAdminPropertyVideos(
       : null,
   });
   try {
-    const res = await axios.post<AdminPropertyVideo[] | { detail?: string }>(url, fd, {
-      withCredentials: true,
-      validateStatus: () => true,
-    });
+    const auth = await getAdminUploadAuth();
+    const { status, data } = await directMultipartPost<AdminPropertyVideo[]>(
+      apiPath,
+      fd,
+      auth,
+    );
     logAdminVideoUploadClient("response", {
-      url,
+      mode: "direct",
+      url: `${auth.apiBaseUrl}${apiPath}`,
       slug,
-      status: res.status,
-      ok: res.status >= 200 && res.status < 300,
-      data: res.data,
+      status,
+      ok: status >= 200 && status < 300,
+      data,
     });
-    if (res.status < 200 || res.status >= 300) {
-      throw new Error(detailFromUnknown(res.data));
+    if (status < 200 || status >= 300) {
+      throw new Error(detailFromUnknown(data));
     }
-    return res.data as AdminPropertyVideo[];
+    return data;
   } catch (e) {
     logAdminVideoUploadClient("error", {
-      url,
+      mode: "direct",
+      apiPath,
       slug,
       message: e instanceof Error ? e.message : String(e),
     });

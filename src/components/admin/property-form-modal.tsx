@@ -238,14 +238,21 @@ export function PropertyFormModal({
   const [deletingServerVideoId, setDeletingServerVideoId] = useState<number | null>(null);
   const [mediaMessage, setMediaMessage] = useState<string | null>(null);
 
+  const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
   function addImageFiles(incoming: File[]) {
     const accepted = incoming.filter((f) => f.type.startsWith("image/"));
     if (!accepted.length) return;
+    const withinSize = accepted.filter((f) => f.size <= MAX_IMAGE_BYTES);
+    if (!withinSize.length) {
+      setMediaMessage("Each image must be 5 MB or smaller.");
+      return;
+    }
     setMediaMessage(null);
     setValues((v) => {
       const existing = v.images ?? [];
       const names = new Set(existing.map((f) => f.name + f.size));
-      const deduped = accepted.filter((f) => !names.has(f.name + f.size));
+      const deduped = withinSize.filter((f) => !names.has(f.name + f.size));
       return { ...v, images: [...existing, ...deduped].slice(0, 20) };
     });
   }
@@ -912,7 +919,8 @@ export function PropertyFormModal({
                       : "Up to 20 high-quality JPG, PNG or WEBP (max 5MB each)."}
                   </p>
                   <p className="mt-1 text-xs text-[#99A1AF]">
-                    First new upload is auto-set as primary when added to a listing
+                    First new upload is auto-set as primary when added to a listing. On production,
+                    new images and videos upload directly to the API server (not through Vercel).
                   </p>
                 </div>
                 <label
